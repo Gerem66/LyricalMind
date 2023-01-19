@@ -9,7 +9,7 @@ import pocketsphinx             # Audio recognition
 from fuzzywuzzy import fuzz     # Text phonetic comparison
 
 class LyricsSync:
-    tempFolder = './parts/'
+    tempFolder = './tmp/'
     step = .5
 
     def __init__(self, filename: str, lyrics: list[str]):
@@ -46,9 +46,10 @@ class LyricsSync:
             recognitionText = ''
             for reco in sphinx:
                 recognitionText += str(reco)
-            self.data[file] = {}
+            index = round(float(file.split('_')[-1].replace('.wav', '')), 1)
+            self.data[index] = {}
             for line in self.lyrics:
-                self.data[file][line] = LyricsSync.GetRatio(line, recognitionText)
+                self.data[index][line] = LyricsSync.GetRatio(line, recognitionText)
 
     def GetRatio(reference, line):
         if len(line) + 5 > len(reference):
@@ -66,21 +67,22 @@ class LyricsSync:
     def Save(self):
         with open(self.tempFolder + 'data.txt', 'w') as f:
             # Write header
-            f.write('file,')
+            f.write('Time,')
             f.write(','.join(self.lyrics))
             f.write('\n')
 
             # Write data
-            for file in self.data.keys():
-                f.write(file)
+            for index in self.data.keys():
+                f.write(str(index))
                 for line in self.lyrics:
-                    ratioText = '{}|{}'.format(self.data[file][line]['ratio1'], self.data[file][line]['ratio2'])
+                    ratioText = '{}|{}'.format(self.data[index][line]['ratio1'], self.data[index][line]['ratio2'])
                     f.write(',' + ratioText)
                 f.write('\n')
 
 # Get lyrics from file
 with open('lyrics.txt', 'r') as f:
     lines = f.readlines()
+lines = [line.replace('\n', '').strip() for line in lines]
 filename = './juice-voice.wav'
 
 lyricsSync = LyricsSync(filename, lines)
