@@ -9,7 +9,7 @@ import pocketsphinx             # Audio recognition
 from fuzzywuzzy import fuzz     # Text phonetic comparison
 
 class LyricsSync:
-    tempFolder = './tmp/'
+    tempFolder = '../tmp/'
     step = .5
 
     def __init__(self, filename: str, lyrics: list[str]):
@@ -65,25 +65,32 @@ class LyricsSync:
         pass
 
     def Save(self):
-        with open(self.tempFolder + 'data.txt', 'w') as f:
-            # Write header
-            f.write('Time,')
-            f.write(','.join(self.lyrics))
-            f.write('\n')
+        f = open(self.tempFolder + 'data1.txt', 'w')
+        g = open(self.tempFolder + 'data2.txt', 'w')
 
-            # Write data
-            for index in self.data.keys():
-                f.write(str(index))
-                for line in self.lyrics:
-                    ratioText = '{}|{}'.format(self.data[index][line]['ratio1'], self.data[index][line]['ratio2'])
-                    f.write(',' + ratioText)
-                f.write('\n')
+        # Write header
+        f.write('Time,' + ','.join(self.lyrics) + '\n')
+        g.write('Time,' + ','.join(self.lyrics) + '\n')
+
+        # Write data
+        for index in self.data.keys():
+            index = '{:.2f}}'.format(index)
+            f.write(str(index))
+            g.write(str(index))
+            for line in self.lyrics:
+                f.write(',' + str(self.data[index][line]['ratio1']))
+                g.write(',' + str(self.data[index][line]['ratio2']))
+            f.write('\n')
+            g.write('\n')
+
+        f.close()
+        g.close()
 
 # Get lyrics from file
-with open('lyrics.txt', 'r') as f:
+with open('../lyrics.txt', 'r') as f:
     lines = f.readlines()
 lines = [line.replace('\n', '').strip() for line in lines]
-filename = './juice-voice.wav'
+filename = '../juice-voice.wav'
 
 lyricsSync = LyricsSync(filename, lines)
 lyricsSync.step = .2
