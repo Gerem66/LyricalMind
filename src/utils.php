@@ -12,11 +12,10 @@
         return $status;
     }
 
-    function stripAccents($stripAccents) {
-        if (strpos($stripAccents, 'œ'))
-            $stripAccents = str_replace('œ', 'oe', $stripAccents);
-        $transliterator = Transliterator::createFromRules(':: NFD; :: [:Nonspacing Mark:] Remove; :: NFC;', Transliterator::FORWARD);
-        return $transliterator->transliterate($stripAccents);
+    function stripAccents($str) {
+        $from = 'àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ';
+        $to = 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY';
+        return strtolower(strtr($str, $from, $to));
     }
 
     function ClearLyrics($lyrics) {

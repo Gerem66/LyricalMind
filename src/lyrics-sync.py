@@ -8,21 +8,35 @@ from difflib import SequenceMatcher
 import pocketsphinx             # Audio recognition
 from fuzzywuzzy import fuzz     # Text phonetic comparison
 
+# I still... 23s
+# Can't take... 26s
+# It's to the... 29s
+# And I cannot... 32s
+# Easier said... 35s
+
 class LyricsSync:
     tempFolder = '../tmp/'
     step = .5
 
-    def __init__(self, filename: str, lyrics: list[str]):
+    def __init__(self, filename: str = None, lyrics: list[str] = ''):
         self.filename = filename
         self.lyrics = lyrics
+
+        self.data = {}
+
+        if filename is None:
+            return
 
         self.tempFolder += os.path.basename(filename) + '/'
         self.ClearTempFolder()
         if not os.path.exists(self.tempFolder):
             os.mkdir(self.tempFolder)
 
+        if not os.path.exists(filename) or not filename.endswith('.wav'):
+            print('Audio file not found!')
+            return
+
         self.audio = pydub.AudioSegment.from_file(filename, format='wav')
-        self.data = {}
 
     def ClearTempFolder(self):
         if not os.path.exists(self.tempFolder): return
@@ -46,7 +60,8 @@ class LyricsSync:
             recognitionText = ''
             for reco in sphinx:
                 recognitionText += str(reco)
-            index = round(float(file.split('_')[-1].replace('.wav', '')), 1)
+            i = float(file.split('_')[-1].replace('.wav', ''))
+            index = '{:06.2f}'.format(i)
             self.data[index] = {}
             for line in self.lyrics:
                 self.data[index][line] = LyricsSync.GetRatio(line, recognitionText)
@@ -73,22 +88,50 @@ class LyricsSync:
         g.write('Time,' + ','.join(self.lyrics) + '\n')
 
         # Write data
-        for index in self.data.keys():
-            index = '{:.2f}}'.format(index)
-            f.write(str(index))
-            g.write(str(index))
+        i = 0
+        while True:
+            index = '{:06.2f}'.format(i)
+            if index not in self.data.keys(): break
+
+            f.write(index)
+            g.write(index)
             for line in self.lyrics:
                 f.write(',' + str(self.data[index][line]['ratio1']))
                 g.write(',' + str(self.data[index][line]['ratio2']))
             f.write('\n')
             g.write('\n')
 
+            i += self.step
+
         f.close()
         g.close()
 
+    def Load(self, datafile: str):
+        f = open(datafile, 'r')
+        lines = [ line.replace('\n', '') for line in f.readlines() ]
+        f.close()
+
+        self.data = {}
+        self.lyrics = lines[0].split(',')[1:]
+
+        for line in lines[1:]:
+            line = line.split(',')
+            index = '{:06.2f}'.format(float(line[0]))
+            self.data[index] = {}
+            for i in range(1, len(line)):
+                self.data[index][self.lyrics[i-1]] = line[i]
+
+
+load = False
+
+if load:
+    lyricsSync = LyricsSync()
+    lyricsSync.Load('../tmp/juice-voice.wav/data1.txt')
+    print(lyricsSync.data)
+    exit()
+
 # Get lyrics from file
-with open('../lyrics.txt', 'r') as f:
-    lines = f.readlines()
+with open('../lyrics.txt', 'r') as f: lines = f.readlines()
 lines = [line.replace('\n', '').strip() for line in lines]
 filename = '../juice-voice.wav'
 

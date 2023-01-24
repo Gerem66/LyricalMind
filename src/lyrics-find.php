@@ -1,7 +1,5 @@
 <?php
 
-    require_once(__DIR__ . '/utils.php');
-
     function GetLyrics($artists, $title) {
         $lyrics = GetLyricsFromAZ($artists, $title);
         if ($lyrics === false) $lyrics = GetLyricsFromP2C($artists, $title);
