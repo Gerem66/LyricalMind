@@ -5,7 +5,8 @@ from lib.assemblyai import AssemblyAI_Upload, AssemblyAI_SpeechToText
 
 
 
-filename = 'juice-voice.wav'
+#filename = 'juice-voice.wav'
+filename = '../CreationVoice/audio.wav'
 
 audio_url = AssemblyAI_Upload(filename)
 if audio_url is None:
@@ -18,3 +19,6 @@ if error is not None:
     exit(2)
 
 print('Filename: {}\nAudio URL: {}\nResult: {}'.format(filename, audio_url, result))
+
+text = result['text']
+words = result['words']

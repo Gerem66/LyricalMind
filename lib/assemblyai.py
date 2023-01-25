@@ -41,6 +41,8 @@ def __assemblyai_poll(transcript_id):
     return polling_response.json()
 
 def AssemblyAI_SpeechToText(url):
+    if url is None:
+        return None, 'url is None'
     transcribe_id = __assemblyai_transcribe(url)
     if transcribe_id is None:
         return None, 'assemblyai transcribe failed'

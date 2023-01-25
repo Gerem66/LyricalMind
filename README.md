@@ -15,3 +15,17 @@
 
 ## Packages
 - [AssemblyAI](https://www.assemblyai.com)
+
+## TODO (0/12)
+- [ ] Test AssemblyAI PHP script
+- [ ] Update "getlyrics"
+    - [ ] Get lyrics from spotify
+    - [ ] Add websites to scrap
+- [ ] Song
+    - [ ] Download from Spotify (spotdl)
+    - [ ] Spleeter from PHP (python3 spleeter)
+- [ ] Implement AssemblyAI
+- [ ] Make database to store all data (prevent duplication requests)
+- [ ] Remove python & unused scripts
+- [ ] Rewrite properly & optimize
+- [ ] Final tests
