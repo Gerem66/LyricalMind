@@ -5,8 +5,8 @@
      * @param array $output Output of command
      * @return integer Status of command
      */
-    function bash($command, &$output = null) {
-        $command = 'sudo -u metacortex ' . $command;
+    function bash($command, $user = 'root', &$output = null) {
+        $command = "sudo -u $user $command";
         $command = escapeshellcmd($command);
         exec($command, $output, $status);
         return $status;
