@@ -8,29 +8,65 @@
 
     class LyricalMind
     {
-        public function __construct()
-        {
+        private $assemblyai = false;
+
+        public function __construct($sync = false) {
+            if ($sync) {
+                $this->assemblyai = new AssemblyAI('25a1a28d61794482a92b99f6f26f1dff');
+            }
         }
 
         /**
          * Return lyrics of a song
          * @param string $artists
          * @param string $title
+         * @param bool $syncLyrics  If true, will try to sync lyrics with AssemblyAI,
+         *                          and return lyrics from speech recognition if lyrics are not found
          * @return string|false
          */
-        static function GetLyrics($artists, $title) {
-            $lyrics = false;
-            $scrapFuncs = array(
-                'GetLyricsFromAZ',
-                'GetLyricsFromP2C'
+        static function GetLyrics($artists, $title, $syncLyrics = false) {
+            $output = array(
+                'status' => 'success',
+                'artists' => $artists,
+                'title' => $title,
+                'lyrics' => false
             );
 
-            foreach ($scrapFuncs as $source) {
-                $lyrics = $source($artists, $title);
-                if ($lyrics !== false) break;
+            // Check database
+            // TODO
+
+            // Scrapper
+            $output['lyrics'] = scrapper($artists, $title);
+            if ($output['lyrics'] === false) {
+                $output['status'] = 'error';
+                $output['error'] = 'Lyrics not found';
+                return $output;
             }
 
-            return $lyrics;
+            if ($syncLyrics) {
+                // Download audio
+                // TODO
+
+                // Spleet audio
+                // TODO
+
+                // Sort instrumental & vocals
+                // TODO
+
+                // Speech recognition on vocals with AssemblyAI
+                // TODO
+
+                // Sync lyrics with speech recognition
+                // TODO
+
+                // Save lyrics in database
+                // TODO
+
+                // Return lyrics
+                // TODO
+            }
+
+            return $output;
         }
     }
 

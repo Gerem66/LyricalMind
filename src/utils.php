@@ -1,17 +1,5 @@
 <?php
 
-    /**
-     * @param string $command Shell command
-     * @param array $output Output of command
-     * @return integer Status of command
-     */
-    function bash($command, $user = 'root', &$output = null) {
-        $command = "sudo -u $user $command";
-        $command = escapeshellcmd($command);
-        exec($command, $output, $status);
-        return $status;
-    }
-
     function stripAccents($str) {
         $from = 'àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ';
         $to = 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY';
@@ -37,29 +25,44 @@
             $lyrics = str_replace(str_repeat("\n", $i), "\n", $lyrics);
         }
 
-        // Remove blank lines
-        //foreach ($lyrics as $line)
-        //    if ($line == "" || $line == "\n" || $line == "\r" || $line == "\r\n" || $line == " \n" || $line == " ")
-        //        unset($lyrics[$line]);
-
-        // Split lines which are over 10 words
-        /*$c = 0;
-        for ($i = 0; $i < strlen($lyrics); $i++) {
-            if ($lyrics[$i] == "\n") {
-                $c = 0;
-                continue;
-            }
-            if ($lyrics[$i] == ' ') {
-                $c++;
-            }
-            if ($c >= 10) {
-                $lyrics[$i] = "\n";
-                $c = 0;
-                continue;
-            }
-        }*/
-
         return $lyrics;
+    }
+
+    /**
+     * @param int $length Length of the random string
+     * @return string Random string
+     */
+    function RandomString($length = 32) {
+        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/[]{}_#!;:?%()|';
+        $charactersLength = strlen($characters);
+        $randomString = '';
+        for ($i = 0; $i < $length; $i++) {
+            $rnd = rand(0, $charactersLength - 1);
+            $randomString .= $characters[$rnd];
+        }
+        return $randomString;
+    }
+
+    /**
+     * Return IP address of the client or "UNKNOWN" if failed
+     * @link https://stackoverflow.com/questions/3003145/how-to-get-the-client-ip-address-in-php
+     * @return string
+     */
+    function GetClientIP() {
+        $keys = array(
+            'REMOTE_ADDR',
+            'HTTP_FORWARDED',
+            'HTTP_CLIENT_IP',
+            'HTTP_FORWARDED_FOR',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED'
+        );
+        foreach ($keys as $k) {
+            if (!empty($_SERVER[$k])) {
+                return $_SERVER[$k];
+            }
+        }
+        return 'UNKNOWN';
     }
 
 ?>
