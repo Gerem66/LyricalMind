@@ -2,7 +2,7 @@ import requests
 from time import sleep
 
 CHUNK_SIZE = 5_242_880  # 5MB
-API_KEY_ASSEMBLYAI = '536f5c793d804de6ba8c99674859867a'
+API_KEY_ASSEMBLYAI = 'YOUR_API_KEY'
 upload_endpoint = 'https://api.assemblyai.com/v2/upload'
 transcript_endpoint = 'https://api.assemblyai.com/v2/transcript'
 

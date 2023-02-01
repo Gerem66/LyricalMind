@@ -13,6 +13,10 @@
     1. AI Speech recognition
     2. Sync with lyrics
 
+## API
+- [Music Story](https://developers.music-story.com/fr/developpeurs/lyric) ?
+- [Lyrics.comm](https://lyrics.com) ?
+
 ## Packages
 - [AssemblyAI](https://www.assemblyai.com)
 
