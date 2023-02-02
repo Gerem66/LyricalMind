@@ -13,6 +13,15 @@
     1. AI Speech recognition
     2. Sync with lyrics
 
+## Configuration
+* Create a configuration file named `settings.json` with content:
+```json
+{
+    "debug": false,
+    "AssemblyAI_API_KEY": ""
+}
+```
+
 ## API
 - [Music Story](https://developers.music-story.com/fr/developpeurs/lyric) ?
 - [Lyrics.comm](https://lyrics.com) ?
