@@ -6,7 +6,7 @@
      * @param string $title
      * @return string|false
      */
-    function GetLyricsFromP2C($artists, $title) {
+    function GetLyricsFromP2C($artists, $title, &$source) {
         // Format Title
         $formatTitle = strtolower($title);
         $formatTitle = str_replace('Ç', 'c', $formatTitle);
@@ -37,7 +37,7 @@
 
         // Get lyrics
         $p2c_url = "https://paroles2chansons.lemonde.fr/paroles-$artists/paroles-$formatTitle.html";
-        print_r("P2C url: $p2c_url\n");
+        $source = $p2c_url;
         $lyrics = strip_tags(file_get_contents($p2c_url));
         $lyrics = explode('/* paroles2chansons.com - au dessus des paroles*/', $lyrics)[1];
         $lyrics = explode('/* paroles2chansons.com - Below Lyrics */', $lyrics)[0];

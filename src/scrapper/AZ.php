@@ -6,7 +6,7 @@
      * @param string $title
      * @return string|false
      */
-    function GetLyricsFromAZ($artists, $title) {
+    function GetLyricsFromAZ($artists, $title, &$source) {
         // Artists rename - artiste1artiste2artiste3
         $artists = strtolower($artists);
         $charstoremove = [ ' et ', ' & ', '.', 'è', '-', ' ' ];
@@ -27,14 +27,8 @@
 
         // Get Lyrics from AZLyrics
         $url = "http://azlyrics.com/lyrics/$artists/$title.html";
-        print_r("AZ url: $url\n");
+        $source = $url;
         $lyrics = file_get_contents($url);
-
-        // Lyrics Filter
-        $up_partition = '<!-- Usage of azlyrics.com content by any third-party lyrics provider is prohibited by our licensing agreement. Sorry about that. -->';
-        $down_partition = '<!-- MxM banner -->';
-        //print_r($lyrics);
-        //print_r("\n\n\n");
 
         // TODO: Skip that
         $errorText = 'Our systems have detected unusual activity from your IP address (computer network)';
@@ -44,12 +38,17 @@
             return GetLyricsFromAZ($artists, $title);
         }
 
+        // Format lyrics
+        $up_partition = '<!-- Usage of azlyrics.com content by any third-party lyrics provider is prohibited by our licensing agreement. Sorry about that. -->';
         if (strpos($lyrics, $up_partition) !== false) {
             $lyrics = explode($up_partition, $lyrics)[1];
         }
+
+        $down_partition = '<!-- MxM banner -->';
         if (strpos($lyrics, $down_partition) !== false) {
             $lyrics = explode($down_partition, $lyrics)[0];
         }
+
         $lyrics = ClearLyrics($lyrics);
 
         return $lyrics ? $lyrics : false;

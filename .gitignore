@@ -1,5 +1,7 @@
 __pycache__
+vocals/
 
+test.php
 settings.json
 
 *.txt

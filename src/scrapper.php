@@ -10,16 +10,21 @@
      * @param string $title
      * @return string|false
      */
-    function scrapper($artists, $title) {
+    function scrapper($artists, $title, &$source) {
         $lyrics = false;
         $scrapFuncs = array(
             'GetLyricsFromAZ',
             'GetLyricsFromP2C'
         );
 
-        foreach ($scrapFuncs as $source) {
-            $lyrics = $source($artists, $title);
+        foreach ($scrapFuncs as $scrapFunc) {
+            $lyrics = $scrapFunc($artists, $title, $source);
             if ($lyrics !== false) break;
+        }
+
+        // Reset source
+        if ($lyrics === false) {
+            $source = null;
         }
 
         return $lyrics;
