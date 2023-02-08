@@ -49,7 +49,10 @@
      */
     function SPLEETER_separateAudioFile($inputFile, $outputFile, $tempDirectory = '/tmp/spleeter/') {
         if (!str_ends_with($tempDirectory, '/')) $tempDirectory .= '/';
-        $id = explode('.', (end(explode('/', $inputFile))))[0];
+        if (file_exists($outputFile)) return true;
+
+        $pathSplit = explode('/', $inputFile);
+        $id = explode('.', end($pathSplit))[0];
         $tempDirectoryID = $tempDirectory . $id . '/';
 
         // Spleeter

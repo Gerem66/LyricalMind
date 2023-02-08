@@ -28,27 +28,29 @@
         // Get Lyrics from AZLyrics
         $url = "http://azlyrics.com/lyrics/$artists/$title.html";
         $source = $url;
-        $lyrics = file_get_contents($url);
+        //$lyrics = file_get_contents($url);
+
+        $up_partition = '<!-- Usage of azlyrics.com content by any third-party lyrics provider is prohibited by our licensing agreement. Sorry about that. -->';
+        $down_partition = '<!-- MxM banner -->';
+
+        $lyrics = RequestWithProxy($url, required: $up_partition);
+        if ($lyrics === false) return false;
+
+        if (strpos($lyrics, $up_partition) === false || strpos($lyrics, $down_partition) === false) {
+            return false;
+        }
 
         // TODO: Skip that
         $errorText = 'Our systems have detected unusual activity from your IP address (computer network)';
         if (strpos($lyrics, $errorText) !== false) {
             print_r("AZLyrics blocked us, retrying in 5 seconds...\n");
             sleep(5);
-            return GetLyricsFromAZ($artists, $title);
+            return GetLyricsFromAZ($artists, $title, $source);
         }
 
         // Format lyrics
-        $up_partition = '<!-- Usage of azlyrics.com content by any third-party lyrics provider is prohibited by our licensing agreement. Sorry about that. -->';
-        if (strpos($lyrics, $up_partition) !== false) {
-            $lyrics = explode($up_partition, $lyrics)[1];
-        }
-
-        $down_partition = '<!-- MxM banner -->';
-        if (strpos($lyrics, $down_partition) !== false) {
-            $lyrics = explode($down_partition, $lyrics)[0];
-        }
-
+        $lyrics = explode($up_partition, $lyrics)[1];
+        $lyrics = explode($down_partition, $lyrics)[0];
         $lyrics = ClearLyrics($lyrics);
 
         return $lyrics ? $lyrics : false;

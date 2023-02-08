@@ -72,7 +72,13 @@
                 return false;
             }
 
-            return json_decode($response, true)['id'];
+            $response = json_decode($response, true);
+            if (!checkDict($response, 'id')) {
+                echo('AssemblyAI: Invalid response (no ID)');
+                return false;
+            }
+
+            return $response['id'];
         }
 
         /**
@@ -118,7 +124,7 @@
 
                 // Wait for the transcript to be ready
                 if ($status === 'queued' || $status === 'processing') {
-                    sleep(1);
+                    sleep(4);
                 }
             }
             curl_close($curl);
