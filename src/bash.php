@@ -24,7 +24,7 @@
     function FFMPEG_reduceAudioFile($inputFile, $outputFile = null) {
         if ($outputFile === null) {
             $outputFile = '/tmp/' . RandomString(10) . '-' . $inputFile;
-            $command = "ffmpeg -i \"$inputFile\" -acodec libmp3lame -ac 2 -ab 320k -ar 44100 \"$outputFile\"";
+            $command = "ffmpeg -i \"$inputFile\" -acodec libmp3lame -ac 2 -ab 320k -ar 44100 \"$outputFile\" -hide_banner -loglevel quiet";
             $status = bash($command);
             if ($status !== 0) {
                 return false;
@@ -36,8 +36,22 @@
             return $status === 0;
         }
 
-        $command = "ffmpeg -i \"$inputFile\" -acodec libmp3lame -ac 2 -ab 320k -ar 44100 \"$outputFile\"";
+        $command = "ffmpeg -i \"$inputFile\" -acodec libmp3lame -ac 2 -ab 320k -ar 44100 \"$outputFile\" -hide_banner -loglevel quiet";
         $status = bash($command, $output);
+        return $status === 0;
+    }
+
+    /**
+     * Cut audio file to output and hide FFMPEG output
+     * @param string $inputFile
+     * @param string $outputFile
+     * @param int $start Start time
+     * @param int $duration Duration
+     * @return boolean Success of FFMPEG command
+     */
+    function FFMPEG_cutAudioFile($inputFile, $outputFile, $start, $duration) {
+        $command = "ffmpeg -i \"$inputFile\" -acodec copy -ss $start -t $duration \"$outputFile\" -hide_banner -loglevel quiet";
+        $status = bash($command);
         return $status === 0;
     }
 

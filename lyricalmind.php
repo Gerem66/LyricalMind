@@ -67,11 +67,14 @@ class LyricalMind
         $output = array(
             'status' => 'success',
             'error' => false,
+            'id' => false,
             'artists' => $artists,
             'title' => $title,
             'lyrics' => false,
             'timecodes' => false,
-            'total_time' => 0
+            'total_time' => 0,
+            'lyrics_source' => false,
+            'voice_source' => false
         );
         $startTime = microtime(true);
 
@@ -79,12 +82,14 @@ class LyricalMind
         // TODO
 
         // Scrapper
-        $output['lyrics'] = scrapper($artists, $title, $output['lyricsSource']);
+        $lyricsRaw = scrapper($artists, $title, $output['lyrics_source']);
+        $lyrics = new Lyrics($lyricsRaw);
+        $output['lyrics'] = $lyrics->verses;
         if ($output['lyrics'] === false) {
             $output['status'] = 'error';
             $output['error'] = 'LyricsMind: Lyrics not found';
-            $output['total_time'] = microtime(true) - $startTime;
-            return json_encode($output);
+            $output['total_time'] = round(microtime(true) - $startTime, 2);
+            return $output;
         }
 
         if ($syncLyrics) {
@@ -103,33 +108,36 @@ class LyricalMind
             if ($id === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'SpotifyAPI: Song ID not found';
-                $output['total_time'] = microtime(true) - $startTime;
-                return json_encode($output);
+                $output['total_time'] = round(microtime(true) - $startTime, 2);
+                return $output;
             }
+            $output['id'] = $id;
 
             // Download audio (SpotifyAPI > spotdl)
             $downloaded = $this->spotifyAPI->Download($id, $this->tempVocalsPath);
             if ($downloaded === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'SpotifyAPI: song not downloaded';
-                $output['total_time'] = microtime(true) - $startTime;
-                return json_encode($output);
+                $output['total_time'] = round(microtime(true) - $startTime, 2);
+                return $output;
             }
 
             // Spleet audio & save vocals (spleeter / ffmpeg)
-            $filenameDownloaded = "{$id}.mp3";
+            $filenameDownloaded = "{$this->tempVocalsPath}/{$id}.mp3";
             $filenameSpleeted = "{$this->tempVocalsPath}/{$id}_vocals.mp3";
             $spleeted = SPLEETER_separateAudioFile($filenameDownloaded, $filenameSpleeted);
             if ($spleeted === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'Spleeter: vocals not separated';
-                $output['total_time'] = microtime(true) - $startTime;
-                return json_encode($output);
+                $output['total_time'] = round(microtime(true) - $startTime, 2);
+                return $output;
             }
+            $output['voice_source'] = $filenameSpleeted;
 
             // Get timecodes from audio reference
             $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
             $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
+            //print_r($transcriptID);
             list($result, $error) = $this->assemblyAI->GetTranscript($transcriptID);
             if ($result === false || $error !== false) {
                 echo("Error transcribing file: $error");
@@ -139,13 +147,12 @@ class LyricalMind
 
             // Speech recognition on vocals (AssemblyAI)
             // Sync lyrics with speech recognition (php script)
-            $lyrics = new Lyrics($output['lyrics']);
             $timecodes = $lyrics->SyncSongStructure($referenceWords);
             if ($timecodes === false || count($timecodes) ===0) {
                 $output['status'] = 'error';
                 $output['error'] = 'Lyrics: lyrics not synced';
-                $output['total_time'] = microtime(true) - $startTime;
-                return json_encode($output);
+                $output['total_time'] = round(microtime(true) - $startTime, 2);
+                return $output;
             }
             $output['timecodes'] = $timecodes;
 
@@ -153,8 +160,8 @@ class LyricalMind
             // TODO
         }
 
-        $output['total_time'] = microtime(true) - $startTime;
-        return json_encode($output);
+        $output['total_time'] = round(microtime(true) - $startTime, 2);
+        return $output;
     }
 }
 

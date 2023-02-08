@@ -1,5 +1,6 @@
 __pycache__
 vocals/
+pretrained_models
 
 test.php
 settings.json
