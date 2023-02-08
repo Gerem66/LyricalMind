@@ -29,7 +29,7 @@ class LyricalMind
     private $spotifyAPI = false;
 
     private $configFile = __DIR__ . '/settings.json';
-    private $tempVocalsPath = __DIR__ . '/vocals';
+    private $tempVocalsPath = __DIR__ . '/tmp';
 
     /**
      * LyricalMind constructor.
@@ -66,10 +66,14 @@ class LyricalMind
     public function GetLyrics($artists, $title, $syncLyrics = false) {
         $output = array(
             'status' => 'success',
+            'error' => false,
             'artists' => $artists,
             'title' => $title,
-            'lyrics' => false
+            'lyrics' => false,
+            'timecodes' => false,
+            'total_time' => 0
         );
+        $startTime = microtime(true);
 
         // Check database
         // TODO
@@ -79,6 +83,7 @@ class LyricalMind
         if ($output['lyrics'] === false) {
             $output['status'] = 'error';
             $output['error'] = 'LyricsMind: Lyrics not found';
+            $output['total_time'] = microtime(true) - $startTime;
             return json_encode($output);
         }
 
@@ -98,14 +103,16 @@ class LyricalMind
             if ($id === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'SpotifyAPI: Song ID not found';
+                $output['total_time'] = microtime(true) - $startTime;
                 return json_encode($output);
             }
 
             // Download audio (SpotifyAPI > spotdl)
-            $downloaded = $this->spotifyAPI->Download($id);
+            $downloaded = $this->spotifyAPI->Download($id, $this->tempVocalsPath);
             if ($downloaded === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'SpotifyAPI: song not downloaded';
+                $output['total_time'] = microtime(true) - $startTime;
                 return json_encode($output);
             }
 
@@ -116,22 +123,28 @@ class LyricalMind
             if ($spleeted === false) {
                 $output['status'] = 'error';
                 $output['error'] = 'Spleeter: vocals not separated';
+                $output['total_time'] = microtime(true) - $startTime;
                 return json_encode($output);
             }
 
+            // Get timecodes from audio reference
+            $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
+            $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
+            list($result, $error) = $this->assemblyAI->GetTranscript($transcriptID);
+            if ($result === false || $error !== false) {
+                echo("Error transcribing file: $error");
+                return false;
+            }
+            $referenceWords = $result['words']; // Or 'text'
+
             // Speech recognition on vocals (AssemblyAI)
-
-            $url = $this->assemblyAI->UploadFile($filenameSpleeted);
-            $id = $this->assemblyAI->SubmitAudioFile($url);
-            $transcript = $this->assemblyAI->GetTranscript($id);
-            $words = $transcript['words']; // Or $transcript['text']
-
             // Sync lyrics with speech recognition (php script)
             $lyrics = new Lyrics($output['lyrics']);
-            $timecodes = $lyrics->SyncSongStructure($this->assemblyAI, $words);
+            $timecodes = $lyrics->SyncSongStructure($referenceWords);
             if ($timecodes === false || count($timecodes) ===0) {
                 $output['status'] = 'error';
                 $output['error'] = 'Lyrics: lyrics not synced';
+                $output['total_time'] = microtime(true) - $startTime;
                 return json_encode($output);
             }
             $output['timecodes'] = $timecodes;
@@ -140,6 +153,7 @@ class LyricalMind
             // TODO
         }
 
+        $output['total_time'] = microtime(true) - $startTime;
         return json_encode($output);
     }
 }

@@ -1,23 +1,5 @@
 <?php
 
-class Line {
-    public $content = '';
-    public $mode = 'default';
-
-    public function __construct($content, $mode) {
-        $this->content = $content;
-        $this->mode = $mode;
-    }
-
-    public function __toString() {
-        return $this->content;
-    }
-
-    public function PrintDebug() {
-        echo "[{$this->mode}] {$this->content}\n";
-    }
-}
-
 class Timecode {
     public $type;
     public $start;
@@ -31,148 +13,157 @@ class Timecode {
 }
 
 class Lyrics {
-    /** @var Line[] */
-    public $lines = [];
+    public $verses = array();
     public $versesCount = 0;
-    public $history = [];
 
     public function __construct($text) {
-        $this->lines = $this->__parse($text);
+        $versesRaw = explode("\n\n", $text);
+        foreach ($versesRaw as $verseRaw) {
+            $lines = explode("\n", $verseRaw);
+            array_push($this->verses, $lines);
+            $this->versesCount++;
+        }
     }
 
     public function __toString() {
-        return implode("\n", array_map(function($line) { return $line->content; }, $this->lines));
-    }
-
-    private function __parse($text) {
-        $lyrics = [];
-        $lines = explode("\n", $text);
-        $this->history = ['default'];
-
-        function getMode($line) {
-            $allModes = ['default', 'title', 'intro', 'verse', 'chorus', 'outro', 'bridge', 'interlude', 'pre-chorus', 'hook'];
-            foreach ($allModes as $mode) {
-                $parenthesis = strpos($line, '(') !== false && strpos($line, ')') !== false;
-                $crochets = strpos($line, '[') !== false && strpos($line, ']') !== false;
-                $endOfLine = substr($line, -1) === ':';
-                if (strpos($line, $mode) !== false && strlen($line) <= strlen($mode) + 5) {
-                    return $mode;
-                }
-                if (strpos($line, $mode) !== false && ($parenthesis || $crochets || $endOfLine)) {
-                    return $mode;
-                }
+        $output = '';
+        foreach ($this->verses as $verse) {
+            foreach ($verse as $line) {
+                $output .= $line . "\n";
             }
-            return null;
         }
-
-        foreach ($lines as $l) {
-            $line = strtolower(trim($l));
-            if (!$line || substr($line, 0, 7) === '(title)') {
-                continue;
-            }
-            $mode = getMode($line);
-            if ($mode) {
-                $modeCount = 1;
-                foreach ($this->history as $historyMode) {
-                    if (substr($historyMode, 0, strlen($mode)) === $mode) {
-                        $modeCount++;
-                    }
-                }
-                $this->history[] = $mode . $modeCount;
-                $this->versesCount++;
-                continue;
-            }
-            $lyrics[] = new Line($line, end($this->history));
-        }
-        return $lyrics;
-    }
-
-    public function PrintDebug() {
-        foreach ($this->lines as $line) {
-            $line->PrintDebug();
-        }
-    }
-
-    public function GetStructure() {
-        return array_slice($this->history, 1);
+        return $output;
     }
 
     public function GetVersesCount() {
         return $this->versesCount;
     }
 
-    public function GetVerses($index) {
-        $keepVerse = fn($line) => str_starts_with($line->mode, $index);
-        $lines = array_filter($this->lines, $keepVerse);
-        $verse = join("\n", array_map(fn($line) => $line->content, $lines));
-        return $verse;
+    private function formatText($text) {
+        $text = strtolower($text);
+        return preg_replace('/[[:punct:]]/', '', $text);
     }
 
     /**
-     * @param AssemblyAI $assemblyAI
-     * @param string $referenceAudioPath
+     * Get precise word from reference words
+     * @param array $referenceWords Reference words from AssemblyAI
+     * @param array $lineWords Line to search for the word
+     * @param int $referenceWordsIndex Index of the current word in reference words
+     * @return int|false Index of the word
+     */
+    private function getPreciseWord($referenceWords, $referenceWordsIndex, $lineWords) {
+        $lastWord = $lineWords[count($lineWords) - 1];
+        //print_r("Last word: $lastWord\n");
+        $offset = intval(count($lineWords) * .5);
+        //print_r("Max offset: $offset\n");
+        $words = array_column($referenceWords, 'text');
+        $words = array_splice($words, $referenceWordsIndex + $offset, 2 * $offset);
+        //print_r("Words: " . implode(' ', $words) . "\n");
+        $index = array_search($lastWord, $words);
+        if ($index !== false) {
+            $index += $offset;
+        }
+        return $index;
+    }
+
+    private function getApproximativeWord($referenceWords, $referenceWordsIndex, $lineWords) {
+        // 1. Soit X la moitié du nombre de mots dans la ligne
+        $lineLength = count($lineWords);
+        $offset = intval($lineLength * .4);
+        //print_r("Max offset: $offset\n");
+
+        // 4. Sinon, on recommence le point 2 avec le mot précédent (puis on l'ajoutera au résultat)
+        for ($start = 0; $start < $offset; $start++) {
+            //$test = array_column($referenceWords, 'text');
+            //print_r("ASearch: " . implode(' ', array_slice($test, $referenceWordsIndex + $lineLength - $offset, 2 * $offset)) . "\n");
+
+            // 2. Chercher la distance de levenshtein la plus petite entre X et 3X
+            $minDistance = 999;
+            $minDistanceIndex = false;
+            for ($i = -$offset; $i < $offset; $i++) {
+                if ($referenceWordsIndex + $lineLength + $i < 0 ||
+                    $referenceWordsIndex + $lineLength + $i >= count($referenceWords)) {
+                    break;
+                }
+                $word = $referenceWords[$referenceWordsIndex + $lineLength + $i]['text'];
+                $lastWord = $lineWords[$lineLength - $start - 1];
+                $distance = levenshtein($word, $lastWord);
+                if ($distance < $minDistance) {
+                    $minDistance = $distance;
+                    $minDistanceIndex = $i;
+                }
+            }
+    
+            // 3. Si la distance est inférieure à 3, on a trouvé le mot
+            $index = $minDistanceIndex + $lineLength + $start;
+            if ($index >= 0 && $minDistance < 2) {
+                return $index;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sync lyrics with AssemblyAI results
+     * @param array $referenceWords Reference words from AssemblyAI
      * @return Timecode[]
      */
-    function SyncSongStructure($assemblyAI, $referenceAudioPath) {
-        $couplets = array();
-
-        // Get timecodes from audio reference
-        $referenceWords = null;
-        $audio_url = $assemblyAI->UploadFile($referenceAudioPath);
-        $transcriptID = $assemblyAI->SubmitAudioFile($audio_url, 'en_US');
-        list($result, $error) = $assemblyAI->GetTranscript($transcriptID);
-        if ($result === false || $error !== false) {
-            echo("Error transcribing file: $error");
-            return false;
+    public function SyncSongStructure($referenceWords) {
+        foreach ($referenceWords as $key => $word) {
+            $referenceWords[$key]['text'] = $this->formatText($word['text']);
         }
-        $referenceWords = $result['words']; // Or 'text'
 
-        // Find timecodes of couplets from reference lyrics (Match lyrics with AssemblyAI results)
+        $structure = array();
         $referenceWordsIndex = 0;
-        foreach ($this->GetStructure() as $c) {
+
+        // Find timecodes of verses from reference lyrics (Match lyrics with AssemblyAI results)
+        foreach ($this->verses as $key => $verse) {
             $startWord = $referenceWords[$referenceWordsIndex];
-            $couplet = explode("\n", $this->GetVerses($c, true));
-            foreach ($couplet as $line) {
+
+            foreach ($verse as $line) {
                 $lineWords = explode(' ', $line);
 
-                $lastWordOffset = -1;
-                function GetLastWord() {
-                    global $lineWords, $lastWordOffset;
-                    return $lineWords[-($lastWordOffset + 1)];
+                // Precise word
+                //print_r("Search: $line\n");
+                $index = $this->getPreciseWord($referenceWords, $referenceWordsIndex, $lineWords);
+                //print_r("Precise word: $index\n");
+
+                // Approximate word
+                if ($index === false) {
+                    $index = $this->getApproximativeWord($referenceWords, $referenceWordsIndex, $lineWords);
+                    //print_r("Approximative word: $index\n");
                 }
 
-                $i = 0;
-                $fail = false;
-                while ($fail || $i === 0 || $i >= 20) {
-                    $fail = false;
-                    $lastWordOffset += 1;
-                    // Precise word
-                    try {
-                        $words = array_column($referenceWords, 'text', $referenceWordsIndex);
-                        $i = array_search(GetLastWord(), $words) + 1;
-                    } catch (Exception $e) {
-                    }
-
-                    // Approximate word
-                    if ($i === 0 || $i > 20) {
-                        $i = count(explode(' ', $line)) - 3;
-                        while ($i < 20 && levenshtein(GetLastWord(), $referenceWords[$referenceWordsIndex + $i]['text']) > 3) {
-                            $i += 1;
-                            if ($referenceWordsIndex + $i >= count($referenceWords)) {
-                                $fail = true;
-                                break;
-                            }
-                        }
-                        $i += 1;
-                    }
+                // Warn
+                if ($index === false) {
+                    //$testLine = implode(' ', array_splice(array_column($referenceWords, 'text'), $referenceWordsIndex, 15));
+                    //echo("Warn: Can't find word in reference words: $line ($referenceWordsIndex - $testLine)\n");
+                    //$referenceWordsIndex += count($lineWords);
+                    continue;
                 }
-                $i += $lastWordOffset;
-                $referenceWordsIndex += $i;
+
+                $tempLine = array_slice($referenceWords, $referenceWordsIndex, $index + 1);
+                $tempLine = array_column($tempLine, 'text');
+                $tempLine = implode(' ', $tempLine);
+                //echo("[Verse $key] $line | $tempLine\n");
+                $referenceWordsIndex += $index + 1;
             }
+
+            if ($referenceWordsIndex === 0) {
+                //echo("Warn: Can't find any word in reference words\n");
+                continue;
+            }
+
             $endWord = $referenceWords[$referenceWordsIndex - 1];
-            $couplets[] = array('c' => $c, 'start' => $startWord['start'], 'end' => $endWord['end']);
+            //print_r($endWord['text'] . "\n");
+            $newStruct = array(
+                'verse' => $key,
+                'start' => $startWord['start'],
+                'end' => $endWord['end']
+            );
+            array_push($structure, $newStruct);
         }
-        return $couplets;
+        return $structure;
     }
 }
 
