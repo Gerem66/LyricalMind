@@ -1,12 +1,12 @@
 <?php
 
 class Timecode {
-    public $type;
+    public $verse;
     public $start;
     public $end;
 
-    public function __construct($type, $start, $end) {
-        $this->type = $type;
+    public function __construct($verse, $start, $end) {
+        $this->verse = $verse;
         $this->start = $start;
         $this->end = $end;
     }
@@ -113,13 +113,15 @@ class Lyrics {
             $referenceWords[$key]['text'] = $this->formatText($word['text']);
         }
 
-        $structure = array();
+        /** @var Timecode[] */
+        $timecodes = array();
         $referenceWordsIndex = 0;
 
         // Find timecodes of verses from reference lyrics (Match lyrics with AssemblyAI results)
         foreach ($this->verses as $key => $verse) {
             $startWord = $referenceWords[$referenceWordsIndex];
 
+            $index = false;
             foreach ($verse as $line) {
                 $lineWords = explode(' ', $line);
 
@@ -149,21 +151,21 @@ class Lyrics {
                 $referenceWordsIndex += $index + 1;
             }
 
-            if ($referenceWordsIndex === 0) {
+            if ($index === false) {
                 //echo("Warn: Can't find any word in reference words\n");
                 continue;
             }
 
             $endWord = $referenceWords[$referenceWordsIndex - 1];
             //print_r($endWord['text'] . "\n");
-            $newStruct = array(
-                'verse' => $key,
-                'start' => $startWord['start'],
-                'end' => $endWord['end']
+            $newTimecode = new Timecode(
+                $key + 1,
+                $startWord['start'],
+                $endWord['end']
             );
-            array_push($structure, $newStruct);
+            array_push($timecodes, $newTimecode);
         }
-        return $structure;
+        return $timecodes;
     }
 }
 

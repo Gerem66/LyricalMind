@@ -9,22 +9,11 @@
     function GetLyricsFromP2C($artists, $title, &$source) {
         // Format Title
         $formatTitle = strtolower($title);
-        $formatTitle = str_replace('Ç', 'c', $formatTitle);
-        $formatTitle = str_replace('ç', 'c', $formatTitle);
         $formatTitle = str_replace(' & ', ' ', $formatTitle);
-        $formatTitle = str_replace(',', '', $formatTitle);
-        $formatTitle = str_replace('’', '-', $formatTitle);
-        $formatTitle = str_replace('\'', '-', $formatTitle);
-        $formatTitle = str_replace('"', '-', $formatTitle);
-        $formatTitle = str_replace(':', '-', $formatTitle);
-        $formatTitle = str_replace('!', '', $formatTitle);
-        $formatTitle = str_replace('@', '', $formatTitle);
-        $formatTitle = str_replace(' - ', '-', $formatTitle);
-        $formatTitle = str_replace('é', 'e', $formatTitle);
-        $formatTitle = str_replace('...', '', $formatTitle);
-        $formatTitle = str_replace('.', '-', $formatTitle);
+        $formatTitle = str_replace(['!', '@', '...', ',', '(', ')'], '', $formatTitle);
+        $formatTitle = str_replace(['’', '\'', '"', ':', '.', ' - '], '', $formatTitle);
         $formatTitle = trim($formatTitle);
-        $formatTitle = join('-', explode(' ', $formatTitle));
+        $formatTitle = str_replace(' ', '-', $formatTitle);
         $formatTitle = stripAccents($formatTitle);
         
         // Format Artists
@@ -32,16 +21,27 @@
         if (strpos($artists, ',')) // Get First
             $artists = explode(',', $artists)[0];
         $artists = str_replace('\'', '-', $artists);
-        $artists = join('-', explode(' ', $artists));
+        $artists = str_replace(' ', '-', $artists);
         $artists = stripAccents($artists);
 
         // Get lyrics
         $p2c_url = "https://paroles2chansons.lemonde.fr/paroles-$artists/paroles-$formatTitle.html";
         $source = $p2c_url;
-        $lyrics = RequestWithProxy($p2c_url);
+
+        $up_partition = '/* paroles2chansons.com - au dessus des paroles*/';
+        $down_partition = '/* paroles2chansons.com - Below Lyrics */';
+
+        $lyrics = RequestWithProxy($p2c_url, required: $up_partition);
+        if ($lyrics === false) return false;
+
+        if (strpos($lyrics, $up_partition) === false ||
+            strpos($lyrics, $down_partition) === false) {
+            return false;
+        }
+
         $lyrics = strip_tags($lyrics);
-        $lyrics = explode('/* paroles2chansons.com - au dessus des paroles*/', $lyrics)[1];
-        $lyrics = explode('/* paroles2chansons.com - Below Lyrics */', $lyrics)[0];
+        $lyrics = explode($up_partition, $lyrics)[1];
+        $lyrics = explode($down_partition, $lyrics)[0];
         $lyrics = explode("\n", $lyrics);
 
         $blackwords = [
@@ -65,7 +65,7 @@
 
         $lyrics = implode("\n", $lyrics);
         $lyrics = ClearLyrics($lyrics);
-        //print_r(str_replace("\n", '<br />', $lyrics));
+
         $lines = explode("\n", $lyrics);
         for ($i = 0; $i < count($lines); $i++) {
             if (strpos($lines[$i], 'google_ad_client') !== false || strpos($lines[$i], 'google_ad_slot') !== false ||
@@ -75,15 +75,7 @@
                 }
         }
         $lyrics = join("\n", $lines);
-
-        $lyricsFound = $lyrics ? true : false;
-        //if (!$lyricsFound && strlen($title) > 5) {
-        //    $title = substr($title, 1);
-        //    $lyrics = GetLyricsFromP2C($artists, $title);
-        //    return $lyrics;
-        //}
-
-        return $lyricsFound ? $lyrics : false;
+        return $lyrics ? $lyrics : false;
     }
 
 

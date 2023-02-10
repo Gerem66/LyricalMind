@@ -25,6 +25,29 @@ function ClearLyrics($lyrics) {
         $lyrics = str_replace(str_repeat("\n", $i), "\n", $lyrics);
     }
 
+    // For each verse, remove the first line if starts and ends with brackets
+    $verses = explode("\n\n", $lyrics);
+    foreach ($verses as $key => $verse) {
+        $lines = explode("\n", $verse);
+        if (count($lines) > 1) {
+            $firstLine = $lines[0];
+            $lastLine = $lines[count($lines) - 1];
+            if (substr($firstLine, 0, 1) === '[' &&
+                substr($firstLine, -1) === ']')
+            {
+                array_shift($lines);
+                $verses[$key] = implode("\n", $lines);
+            }
+            if (substr($lastLine, 0, 1) === '[' &&
+                substr($lastLine, -1) === ']')
+            {
+                array_pop($lines);
+                $verses[$key] = implode("\n", $lines);
+            }
+        }
+    }
+    $lyrics = implode("\n\n", $verses);
+
     return $lyrics;
 }
 
@@ -69,11 +92,11 @@ function GetClientIP() {
  * Use proxies.json to get a random proxy from http://free-proxy.cz/en/proxylist/country/all/http/ping/level1
  * @param string $url URL to request
  * @param int $timeout Timeout in seconds
- * @param int $retry Number of retry if failed
+ * @param int $retry Number of retry if failed, with a new random proxy
  * @param string $required Required string in the content
  * @return string|false Content of the URL, or false if failed or no proxy available
  */
-function RequestWithProxy($url, $timeout = 2, $retry = 10, $required = '') {
+function RequestWithProxy($url, $timeout = 3, $retry = 10, $required = '') {
     $proxiesFile = __DIR__ . '/proxies.txt';
     if (!file_exists($proxiesFile)) {
         return false;
@@ -93,6 +116,7 @@ function RequestWithProxy($url, $timeout = 2, $retry = 10, $required = '') {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
+    //echo("Requesting $url with proxy $proxy\n");
     $content = curl_exec($ch);
 
     if (curl_errno($ch) || !$content || ($required && strpos($content, $required) === false)
@@ -114,8 +138,10 @@ function RequestWithProxy($url, $timeout = 2, $retry = 10, $required = '') {
         || strpos($content, '400 Bad Request') !== false
         || strpos($content, '408 Request Timeout') !== false
         || strpos($content, '429 Too Many Requests') !== false) {
-        //if (curl_errno($ch))    echo('cURL error: ' . curl_error($ch));
-        if ($retry > 0)         return RequestWithProxy($url, $retry - 1);
+        //if (curl_errno($ch))    echo('cURL error: ' . curl_error($ch) . "\n");
+        //echo("Retry $retry with proxy $proxy\n");
+        //print_r($content);
+        if ($retry > 0)         return RequestWithProxy($url, $timeout, $retry - 1, $required);
         return false;
     }
 

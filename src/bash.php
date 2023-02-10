@@ -26,9 +26,7 @@
             $outputFile = '/tmp/' . RandomString(10) . '-' . $inputFile;
             $command = "ffmpeg -i \"$inputFile\" -acodec libmp3lame -ac 2 -ab 320k -ar 44100 \"$outputFile\" -hide_banner -loglevel quiet";
             $status = bash($command);
-            if ($status !== 0) {
-                return false;
-            }
+            if ($status !== 0) return false;
 
             // Delete inputfile and rename outputfile to inputfile
             $command = "rm \"$inputFile\" && mv \"$outputFile\" \"$inputFile\"";
@@ -50,7 +48,7 @@
      * @return boolean Success of FFMPEG command
      */
     function FFMPEG_cutAudioFile($inputFile, $outputFile, $start, $duration) {
-        $command = "ffmpeg -i \"$inputFile\" -acodec copy -ss $start -t $duration \"$outputFile\" -hide_banner -loglevel quiet";
+        $command = "ffmpeg -i \"$inputFile\" -acodec copy -ss $start -t $duration \"$outputFile\" -y -hide_banner -loglevel quiet";
         $status = bash($command);
         return $status === 0;
     }

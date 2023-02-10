@@ -40,20 +40,12 @@
             return false;
         }
 
-        // TODO: Skip that
-        $errorText = 'Our systems have detected unusual activity from your IP address (computer network)';
-        if (strpos($lyrics, $errorText) !== false) {
-            print_r("AZLyrics blocked us, retrying in 5 seconds...\n");
-            sleep(5);
-            return GetLyricsFromAZ($artists, $title, $source);
-        }
-
         // Format lyrics
         $lyrics = explode($up_partition, $lyrics)[1];
         $lyrics = explode($down_partition, $lyrics)[0];
         $lyrics = ClearLyrics($lyrics);
 
-        return $lyrics ? $lyrics : false;
+        return !!$lyrics ? $lyrics : false;
     }
 
 ?>
