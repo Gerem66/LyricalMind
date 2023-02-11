@@ -35,15 +35,18 @@
         if ($lyrics === false) return false;
 
         if (strpos($lyrics, $up_partition) === false ||
-            strpos($lyrics, $down_partition) === false) {
+            strpos($lyrics, $down_partition) === false)
+        {
             return false;
         }
 
+        // Find lyrics
         $lyrics = strip_tags($lyrics);
         $lyrics = explode($up_partition, $lyrics)[1];
         $lyrics = explode($down_partition, $lyrics)[0];
-        $lyrics = explode("\n", $lyrics);
 
+        // Script cleaning
+        $lines = explode("\n", $lyrics);
         $blackwords = [
             'googletag',
             '}',
@@ -57,15 +60,14 @@
             'cf_adunit_id'
         ];
         foreach ($blackwords as $word) {
-            $lyrics = array_filter($lyrics, fn($l) => strpos($l, $word) === false);
+            $lines = array_filter($lines, fn($l) => strpos($l, $word) === false);
         }
 
-        // Remove empty lines
-        //$lyrics = array_filter($lyrics, fn($l) => strlen($l) > 0);
+        // Format lyrics
+        $lyrics = join("\n", $lines);
+        $lyrics = CleanLyrics($lyrics);
 
-        $lyrics = implode("\n", $lyrics);
-        $lyrics = ClearLyrics($lyrics);
-
+        // Google Ads cleaning
         $lines = explode("\n", $lyrics);
         for ($i = 0; $i < count($lines); $i++) {
             if (strpos($lines[$i], 'google_ad_client') !== false || strpos($lines[$i], 'google_ad_slot') !== false ||
@@ -75,7 +77,8 @@
                 }
         }
         $lyrics = join("\n", $lines);
-        return $lyrics ? $lyrics : false;
+
+        return !!$lyrics ? $lyrics : false;
     }
 
 

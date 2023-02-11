@@ -36,14 +36,16 @@
         $lyrics = RequestWithProxy($url, required: $up_partition);
         if ($lyrics === false) return false;
 
-        if (strpos($lyrics, $up_partition) === false || strpos($lyrics, $down_partition) === false) {
+        if (strpos($lyrics, $up_partition) === false ||
+            strpos($lyrics, $down_partition) === false)
+        {
             return false;
         }
 
-        // Format lyrics
+        // Find and format lyrics
         $lyrics = explode($up_partition, $lyrics)[1];
         $lyrics = explode($down_partition, $lyrics)[0];
-        $lyrics = ClearLyrics($lyrics);
+        $lyrics = CleanLyrics($lyrics);
 
         return !!$lyrics ? $lyrics : false;
     }

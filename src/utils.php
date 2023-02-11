@@ -6,7 +6,12 @@ function stripAccents($str) {
     return strtolower(strtr($str, $from, $to));
 }
 
-function ClearLyrics($lyrics) {
+/**
+ * Clear lyrics
+ * @param string $lyrics
+ * @return string
+ */
+function CleanLyrics($lyrics) {
     // Remove '&quot;' and '&amp;'
     $lyrics = str_replace('&quot;', '"', $lyrics);
     $lyrics = str_replace('&amp;', '&', $lyrics);
