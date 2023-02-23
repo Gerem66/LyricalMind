@@ -11,7 +11,6 @@ function CleanText($text) {
     return strtolower($text);
 }
 
-function ClearLyrics($lyrics) {
 /**
  * Clear lyrics
  * @param string $lyrics
@@ -141,32 +140,6 @@ function RequestWithProxy($url, $timeout = 3, $retry = 10, $required = '') {
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
     //echo("Requesting $url with proxy $proxy\n");
     $content = curl_exec($ch);
-
-    if (curl_errno($ch) || !$content || ($required && strpos($content, $required) === false)
-        || strpos($content, 'ERR_ACCESS_DENIED') !== false
-        || strpos($content, 'ERR_CONNECT_FAIL') !== false
-        || strpos($content, 'ERR_CONNECTION_CLOSED') !== false
-        || strpos($content, 'ERR_CONNECTION_RESET') !== false
-        || strpos($content, 'ERR_CONNECTION_REFUSED') !== false
-        || strpos($content, 'ERR_CONNECTION_ABORTED') !== false
-        || strpos($content, 'ERR_CONNECTION_TIMED_OUT') !== false
-        || strpos($content, 'ERR_EMPTY_RESPONSE') !== false
-        || strpos($content, 'ERR_NAME_NOT_RESOLVED') !== false
-        || strpos($content, '503 Service Unavailable') !== false
-        || strpos($content, '502 Bad Gateway') !== false
-        || strpos($content, '504 Gateway Time-out') !== false
-        || strpos($content, '500 Internal Server Error') !== false
-        || strpos($content, '403 Forbidden') !== false
-        || strpos($content, '404 Not Found') !== false
-        || strpos($content, '400 Bad Request') !== false
-        || strpos($content, '408 Request Timeout') !== false
-        || strpos($content, '429 Too Many Requests') !== false) {
-        //if (curl_errno($ch))    echo('cURL error: ' . curl_error($ch) . "\n");
-        //echo("Retry $retry with proxy $proxy\n");
-        //print_r($content);
-        if ($retry > 0)         return RequestWithProxy($url, $timeout, $retry - 1, $required);
-        return false;
-    }
 
     curl_close($ch);
     return $content;
