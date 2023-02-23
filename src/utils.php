@@ -6,6 +6,11 @@ function stripAccents($str) {
     return strtolower(strtr($str, $from, $to));
 }
 
+function CleanText($text) {
+    $text = preg_replace('/[[:punct:]]/', '', $text);
+    return strtolower($text);
+}
+
 function ClearLyrics($lyrics) {
     // Remove '&quot;' and '&amp;'
     $lyrics = str_replace('&quot;', '"', $lyrics);
@@ -49,6 +54,18 @@ function ClearLyrics($lyrics) {
     $lyrics = implode("\n\n", $verses);
 
     return $lyrics;
+}
+
+/**
+ * @param AssemblyAIWord[] $referenceWords
+ * @param int $index
+ * @param int $offset
+ * @return AssemblyAIWord[]|false
+ */
+function GetRefWordsFromIndex($referenceWords, $index, $offset) {
+    $index = max(0, $index - $offset);
+    $length = min(2 * $offset + 1, count($referenceWords) - $index);
+    return array_slice($referenceWords, $index, $length);
 }
 
 /**

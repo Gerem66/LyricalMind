@@ -34,11 +34,13 @@
 - [ ] Update "getlyrics"
     - [ ] Get lyrics from spotify
     - [ ] Add websites to scrap
-- [ ] Song
-    - [ ] Download from Spotify (spotdl)
-    - [ ] Spleeter from PHP (python3 spleeter)
-- [ ] Implement AssemblyAI
+- [x] Song
+    - [x] Download from Spotify (spotdl)
+    - [x] Spleeter from PHP (python3 spleeter)
+- [x] Implement AssemblyAI
 - [ ] Make database to store all data (prevent duplication requests)
 - [ ] Remove python & unused scripts
 - [ ] Rewrite properly & optimize
 - [ ] Final tests
+- [ ] Syncroniser les paroles ligne par ligne
+- [ ] Syncroniser les paroles mot par mot

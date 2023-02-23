@@ -96,7 +96,7 @@ class LyricalMind
             return $output;
         }
         $lyrics = new Lyrics($lyricsRaw);
-        $output->lyrics = $lyrics->verses;
+        $output->lyrics = $lyrics->GetVerses();
 
         if ($syncLyrics) {
             // Check SpotifyAPI class
@@ -155,7 +155,7 @@ class LyricalMind
 
             // Speech recognition on vocals (AssemblyAI)
             // Sync lyrics with speech recognition (php script)
-            $timecodes = $lyrics->SyncSongStructure($referenceWords);
+            $timecodes = $lyrics->SyncStructure($referenceWords);
             if ($timecodes === false || count($timecodes) ===0) {
                 $output->status = 'error';
                 $output->error = 'Lyrics: lyrics not synced';
