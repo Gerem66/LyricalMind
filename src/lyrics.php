@@ -93,7 +93,7 @@ class Lyrics {
     /**
      * @param AssemblyAIWord[] $referenceWords Reference words from AssemblyAI
      * @param string|false $error Error message if any
-     * @return Timecode[]|false Synchronized lyrics line by line
+     * @return VerseTimecode[]|false Synchronized lyrics line by line
      */
     public function SyncStructure($referenceWords, &$error = false) {
         $DEBUG = false;
@@ -317,6 +317,7 @@ class Lyrics {
         }
 
         // Get verses timecodes
+        /** @var array<VerseTimecode> */
         $versesTimecodes = array();
 
         // Get first line of each verse
@@ -332,6 +333,14 @@ class Lyrics {
             if ($lastVerse) $nextTimecode = $timecodes[count($timecodes) - 1];
             else   $nextTimecode = $timecodes[$firstLinesIndexes[$i + 1] - 1];
 
+            // Lyrics index errors
+            if ($currTimecode->start < 0 || $currTimecode->end >= $refWordsCount ||
+                $nextTimecode->start < 0 || $nextTimecode->end >= $refWordsCount) {
+                $vt = new VerseTimecode('error', 0.0, 0.0);
+                array_push($versesTimecodes, $vt);
+                continue;
+            }
+
             $status = 'ok';
             $startTime = $referenceWords[$currTimecode->start]->start;
             $endTime = $referenceWords[$nextTimecode->end]->end;
@@ -342,11 +351,10 @@ class Lyrics {
                 $status = 'error';
             }
 
-            $versesTimecodes[] = array(
-                'status' => $status,
-                'start' => round($startTime / 1000, 2),
-                'end' => round($endTime / 1000, 2)
-            );
+            $startTime = round($startTime / 1000, 2);
+            $endTime = round($endTime / 1000, 2);
+            $vt = new VerseTimecode($status, $startTime, $endTime);
+            array_push($versesTimecodes, $vt);
         }
 
         return $versesTimecodes;

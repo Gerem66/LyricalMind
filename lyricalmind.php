@@ -92,6 +92,7 @@ class LyricalMind
         $lyricsRaw = scrapper($artists, $title, $output->lyrics_source);
         if ($lyricsRaw === false) {
             $output->status = 'error';
+            $output->status_code = 1;
             $output->error = 'LyricsMind: Lyrics not found';
             $output->total_time = round(microtime(true) - $startTime, 2);
             return $output;
@@ -111,30 +112,45 @@ class LyricalMind
                 throw new AssemblyAIException('AssemblyAI API key not defined');
 
             // Get ID for download
-            $id = $this->spotifyAPI->GetIdByName($artists, $title);
-            if ($id === false) {
+            $output->id = $this->spotifyAPI->GetIdByName($artists, $title);
+            if ($output->id === false) {
                 $output->status = 'error';
-                $output->error = 'SpotifyAPI: Song ID not found';
+                $output->status_code = 2;
+                $output->error = 'SpotifyAPI: Song not found';
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
             }
-            $output->id = $id;
+
+            $song = $this->spotifyAPI->GetAudioFeature([$output->id]);
+            if ($song === false || count($song) !== 1) {
+                $output->status = 'error';
+                $output->status_code = 2;
+                $output->error = 'SpotifyAPI: Song not found';
+                $output->total_time = round(microtime(true) - $startTime, 2);
+                return $output;
+            }
+
+            $output->bpm = $song[0]['tempo'];
+            $output->key = $song[0]['key'];
+            $output->mode = $song[0]['mode'];
 
             // Download audio (SpotifyAPI > spotdl)
-            $downloaded = $this->spotifyAPI->Download($id, $this->tempVocalsPath);
+            $downloaded = $this->spotifyAPI->Download($output->id, $this->tempVocalsPath);
             if ($downloaded === false) {
                 $output->status = 'error';
+                $output->status_code = 3;
                 $output->error = 'SpotifyAPI: song not downloaded';
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
             }
 
             // Spleet audio & save vocals (spleeter / ffmpeg)
-            $filenameDownloaded = "{$this->tempVocalsPath}/{$id}.mp3";
-            $filenameSpleeted = "{$this->tempVocalsPath}/{$id}_vocals.mp3";
+            $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
+            $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
             $spleeted = SPLEETER_separateAudioFile($filenameDownloaded, $filenameSpleeted);
             if ($spleeted === false) {
                 $output->status = 'error';
+                $output->status_code = 4;
                 $output->error = 'Spleeter: vocals not separated';
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
@@ -148,6 +164,7 @@ class LyricalMind
             $result = $this->assemblyAI->GetTranscript($transcriptID, $error);
             if ($result === false || $error !== false) {
                 $output->status = 'error';
+                $output->status_code = 5;
                 $output->error = "Error transcribing file: $error";
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
@@ -160,6 +177,7 @@ class LyricalMind
             $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
             if ($timecodes === false || $syncError !== false) {
                 $output->status = 'error';
+                $output->status_code = 6;
                 $output->error = "Lyrics: lyrics not synced ($syncError)";
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;

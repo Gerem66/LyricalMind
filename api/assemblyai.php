@@ -87,6 +87,8 @@ class AssemblyAIWord {
         // Precise search
         $resetIncrementValue();
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
+            if ($i < 0 || $i >= $refWordsLength) continue;
+
             $refWord = $referenceWords[$i];
             if ($refWord->cleanText === $word) {
                 return $i;
@@ -98,6 +100,8 @@ class AssemblyAIWord {
         $minDistance = 99;
         $resetIncrementValue();
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
+            if ($i < 0 || $i >= $refWordsLength) continue;
+
             $refWord = $referenceWords[$i];
             $distance = $refWord->compare($word);
             if ($distance < $minDistance) {

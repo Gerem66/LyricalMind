@@ -30,7 +30,7 @@ $error_codes = [
  * @param string $required Required string in the content
  * @return string|false Content of the URL, or false if failed or no proxy available
  */
-function RequestWithProxy($url, $timeout = 3, $retry = 10, $required = '') {
+function RequestWithProxy($url, $timeout = 5, $retry = 10, $required = '') {
     global $error_codes;
 
     // Check if proxies file exists
