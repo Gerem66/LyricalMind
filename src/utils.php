@@ -110,39 +110,4 @@ function GetClientIP() {
     return 'UNKNOWN';
 }
 
-/**
- * Use proxies.json to get a random proxy from http://free-proxy.cz/en/proxylist/country/all/http/ping/level1
- * @param string $url URL to request
- * @param int $timeout Timeout in seconds
- * @param int $retry Number of retry if failed, with a new random proxy
- * @param string $required Required string in the content
- * @return string|false Content of the URL, or false if failed or no proxy available
- */
-function RequestWithProxy($url, $timeout = 3, $retry = 10, $required = '') {
-    $proxiesFile = __DIR__ . '/proxies.txt';
-    if (!file_exists($proxiesFile)) {
-        return false;
-    }
-
-    // List of proxy
-    $proxiesRaw = file_get_contents($proxiesFile);
-    $proxies = explode("\n", $proxiesRaw);
-
-    // Random proxy
-    $proxy = $proxies[array_rand($proxies)];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_PROXY, $proxy);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
-    //echo("Requesting $url with proxy $proxy\n");
-    $content = curl_exec($ch);
-
-    curl_close($ch);
-    return $content;
-}
-
 ?>

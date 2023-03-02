@@ -52,6 +52,12 @@ class Lyrics {
                 return $line;
             }, $lines);
 
+            // Removes empty lines & lines wich starts and ends with brackets or parenthesis
+            $linesClean = array_values(array_filter($lines, function($line) {
+                $line = trim($line);
+                return !empty($line) && !preg_match('/^\(.*\)$/', $line) && !preg_match('/^\[.*\]$/', $line);
+            }));
+
             // Add verse to the list
             array_push($this->verses, $lines);
             array_push($this->versesClean, $linesClean);
@@ -86,11 +92,12 @@ class Lyrics {
 
     /**
      * @param AssemblyAIWord[] $referenceWords Reference words from AssemblyAI
+     * @param string|false $error Error message if any
      * @return Timecode[]|false Synchronized lyrics line by line
      */
-    public function SyncStructure($referenceWords) {
+    public function SyncStructure($referenceWords, &$error = false) {
         $DEBUG = false;
-        $DEBUG_RESULT = 'live'; // all, times, live or none
+        $DEBUG_RESULT = 'none'; // all, times, live or none
         if ($DEBUG) {
             echo('Total ref words: ' . count($referenceWords) . "\n");
         }
@@ -102,13 +109,16 @@ class Lyrics {
         $refWordsCount = count($referenceWords);
         $averageWordsInLine = floor($refWordsCount / $this->linesCount);
         if (count($referenceWords) === 0) {
+            $error = 'No words found from reference';
             return false;
         }
 
-        // 0. Check words length, return if delta more than 50% difference
+        // 0. Check words length, return if delta more than 25% difference
         $maxLength = max($this->wordsCount, $refWordsCount);
-        $delta = abs($this->wordsCount - $refWordsCount);
-        if ($delta > $maxLength * .5) {
+        $delta = abs($this->wordsCount - $refWordsCount) / $maxLength;
+        if ($DEBUG) echo("Words delta: $delta\n");
+        if ($delta > .25) {
+            $error = "Not enough words from reference ($refWordsCount/$this->wordsCount words found)";
             return false;
         }
 
@@ -127,137 +137,124 @@ class Lyrics {
         }
 
         // 2. Corrections - Adjust start and end
-        for ($offset = 10; $offset >= 10; $offset--) { // >= 3
-            for ($l = 0; $l < $this->linesCount; $l++) {
-                $line = $timecodes[$l]->line;
-                $words = explode(' ', $line);
-                $words = array_map('CleanText', $words);
+        $offset = 4;
+        for ($l = 0; $l < $this->linesCount; $l++) {
+            //$DEBUG = $l <= 3;
+            $line = $timecodes[$l]->line;
+            $words = explode(' ', $line);
+            $words = array_map('CleanText', $words);
 
-                if ($DEBUG) {
-                    echo("----------\n");
-                    echo("Line index: $l\n");
-                    echo("Offset: $offset\n");
-                    print_r($timecodes[$l]);
-                    echo("Words: " . implode(' ', $words) . "\n");
-                }
-                if ($timecodes[$l]->start > count($referenceWords) ||
-                    $timecodes[$l]->end > count($referenceWords))
-                        break;
+            if ($DEBUG) {
+                echo("----------\n");
+                echo("Line index: $l\n");
+                echo("Offset: $offset\n");
+                print_r($timecodes[$l]);
+                echo("Words: " . implode(' ', $words) . "\n");
+            }
+            if ($timecodes[$l]->start > count($referenceWords) ||
+                $timecodes[$l]->end > count($referenceWords) ||
+                $timecodes[$l]->start < 0 ||
+                $timecodes[$l]->end < 0)
+                    break;
 
-                $firstRefWord = $referenceWords[$timecodes[$l]->start];
-                $lastRefWord = $referenceWords[$timecodes[$l]->end];
+            $indexMax = count($referenceWords) - 1;
+            $indexStart = 0;
+            if ($l !== 0)
+                $indexStart = $timecodes[$l - 1]->end + 1;
+            if ($indexStart + $offset > $indexMax)
+                $indexStart = $indexMax - $offset;
 
-                // Adjust start
-                $indexMax = count($referenceWords) - 1;
-                $indexStart = 0;
-                $indexEnd = $indexMax;
-                if ($l !== 0)
-                    $indexStart = $timecodes[$l - 1]->end + 1;
-                if ($l !== $indexMax)
-                    $indexEnd = $timecodes[$l + 1]->start - 1;
-                if ($indexStart + $offset > $indexMax)
-                    $indexStart = $indexMax - $offset;
-
-                $foundStart = false;
-                $newIndex = 0;
-                $firstRefWord = $referenceWords[$indexStart];
-                for ($w = 0; $w < count($words); $w++) {
-
-                    // Search first - Precise word
-                    $firstWordLine = CleanText($words[$w]);
-                    if ($firstWordLine !== $firstRefWord->cleanText) {
-                        $nearWords = GetRefWordsFromIndex($referenceWords, $indexStart, $offset);
-                        $nearWords = array_column($nearWords, 'cleanText');
-
-                        if ($DEBUG) {
-                            $txtNearWords = join(', ', $nearWords);
-                            echo("Near words [f: $firstWordLine] ($indexStart +/- $offset): $txtNearWords\n");
-                        }
-
-                        $newIndexOffset = array_search($firstWordLine, $nearWords);
-                        if ($newIndexOffset !== false) {
-                            $newIndex = $indexStart + $newIndexOffset - $offset;
-                            if ($DEBUG) echo("New index offset: $newIndexOffset\n");
-
-                            if ($newIndex < 0 || $newIndexOffset === $offset) {
-                                if ($DEBUG) echo("Nothing\n");
-                                continue;
-                            }
-
-                            $foundStart = true;
-                            $timecodes[$l]->start = max(0, $newIndex - $w);
-                            if ($DEBUG) echo("Precise start found: {$indexStart} => {$timecodes[$l]->start}\n");
-                            break;
-                        } else {
-                            if ($DEBUG) echo("Not found!\n");
-                        }
-                    }
-                }
-
-
-
-                $foundEnd = false;
-                for ($w = 0; $w < count($words); $w++) {
-                    // Search last - Precise word
-                    if (count($words) - $w < 0 || count($words) - $w >= count($words))
-                        continue;
-                    $lastWordLine = CleanText($words[count($words) - $w]);
-                    if ($lastWordLine !== $lastRefWord->cleanText) {
-                        $nearWords = GetRefWordsFromIndex($referenceWords, $indexEnd, $offset);
-                        $nearWords = array_column($nearWords, 'cleanText');
-
-                        if ($DEBUG) {
-                            $txtNearWords = join(', ', $nearWords);
-                            echo("Near words [l: $lastWordLine] ($indexEnd +/- $offset): $txtNearWords\n");
-                        }
-
-                        // Search from last
-                        $nearWords = array_reverse($nearWords);
-                        $newIndexOffset = array_search($lastWordLine, $nearWords);
-                        if ($newIndexOffset !== false) {
-                            $newIndexOffset = count($nearWords) - $newIndexOffset - 1;
-                            $newIndex = $indexEnd + $newIndexOffset - $offset;
-                            if ($DEBUG) echo("New index offset: $newIndexOffset\n");
-
-                            if ($newIndex < 0 || $newIndexOffset === $offset) {
-                                if ($DEBUG) echo("Nothing\n");
-                                continue;
-                            }
-
-                            $foundEnd = true;
-                            $timecodes[$l]->end = max(0, $newIndex + $w);
-                            if ($DEBUG) echo("Precise end found: {$indexEnd} => {$timecodes[$l]->start}\n");
-                            break;
-                        } else {
-                            if ($DEBUG) echo("Not found!\n");
-                        }
-                    }
-                }
-
-                if ($foundStart === false && $foundEnd === false) {
-                    if ($DEBUG) echo("Nothing found\n");
-                    $timecodes[$l]->start = 0;
-                    $timecodes[$l]->end = 0;
-                } else if (($foundStart && !$foundEnd) || $timecodes[$l]->end < $timecodes[$l]->start) {
-                    if ($DEBUG) echo("Start found, end not found\n");
-                    $timecodes[$l]->end = $timecodes[$l]->start + count($words);
-                } else if ((!$foundStart && $foundEnd) || $timecodes[$l]->start < $timecodes[$l]->end) {
-                    if ($DEBUG) echo("End found, start not found\n");
-                    $timecodes[$l]->start = $timecodes[$l]->end - count($words);
+            // Get index start
+            for ($i = $l - 1; $i >= 0; $i--) {
+                if ($timecodes[$i]->end !== 0) {
+                    $indexStart = $timecodes[$i]->end + 1;
+                    break;
                 }
             }
+
+            // Adjust start
+            $foundStart = false;
+            for ($w = 0; $w < count($words) - 2; $w++) {
+                $firstWordLine = CleanText($words[$w]);
+                if ($DEBUG) {
+                    $a = $indexStart - $offset;
+                    $b = $indexStart + $offset;
+                    echo("First word: $firstWordLine\n$a - $b\n");
+                }
+                $newIndex = AssemblyAIWord::search($referenceWords, $firstWordLine, $indexStart - $offset, $indexStart + $offset, $DEBUG);
+                if ($newIndex !== false) {
+                    if ($DEBUG) {
+                        echo("Precise start found: {$timecodes[$l]->start} => {$newIndex}\n");
+                    }
+
+                    $foundStart = true;
+                    $timecodes[$l]->start = $newIndex;
+                    break;
+                } else {
+                    if ($DEBUG) {
+                        echo("Not found!\n");
+                    }
+                }
+            }
+
+            // Search last
+            $foundEnd = false;
+            for ($w = 0; $w < count($words) - 2; $w++) {
+                $lastWordLine = CleanText($words[count($words) - $w - 1]);
+                $s = $timecodes[$l]->start + count($words) - 1;
+
+                if ($DEBUG) {
+                    $wordsCount = count($words);
+                    echo("Hmm: {$timecodes[$l]->start} + {$wordsCount} = {$s}\n");
+                    echo("AAA: $s - " . join(', ', array_slice(array_column($referenceWords, 'cleanText'), $s - $offset, 2*$offset)) . "\n");
+                }
+
+                $newIndex = AssemblyAIWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset, $DEBUG);
+                if ($newIndex !== false) {
+                    if ($DEBUG) {
+                        echo("Precise end found: {$timecodes[$l]->end} => {$newIndex}\n");
+                    }
+
+                    $foundEnd = true;
+                    $timecodes[$l]->end = $newIndex;
+                    break;
+                } else {
+                    if ($DEBUG) echo("Not found!\n");
+                }
+            }
+
+            if ($foundStart === false && $foundEnd === false) {
+                if ($DEBUG) echo("Nothing found\n");
+                $timecodes[$l]->start = 0;
+                $timecodes[$l]->end = 0;
+            } else if (($foundStart && !$foundEnd) || $timecodes[$l]->end < $timecodes[$l]->start) {
+                if ($DEBUG) echo("Start found, end not found\n");
+                $timecodes[$l]->end = $timecodes[$l]->start + count($words);
+            } else if (!$foundStart && $foundEnd) {
+                if ($DEBUG) echo("End found, start not found\n");
+                $timecodes[$l]->start = $timecodes[$l]->end - count($words);
+            }
+            if ($DEBUG) echo("Final found: {$timecodes[$l]->start} - {$timecodes[$l]->end}\n");
         }
 
-        // Search first word (offset +/- .5l)
-        // Search last word (offset +/- .5l)
-
-        // Print result
-        //if ($DEBUG) print_r($timecodes);
+        if (count($timecodes) === 0) {
+            $error = 'No timecodes found';
+            return false;
+        }
 
         // Print line sync & timecodes line by line
         if ($DEBUG_RESULT === 'all' || $DEBUG_RESULT === 'times') {
+            // Get first line of each verse
+            $firstLinesIndexes = array();
+            $verses = $this->GetVerses();
+            $total = 0;
+            for ($i = 0; $i < count($verses); $i++) {
+                $firstLinesIndexes[] = $total;
+                $total += count($verses[$i]);
+            }
+            //print_r($firstLinesIndexes);
+
             for ($i = 0; $i < count($timecodes); $i++) {
-                //if ($i === 10) break; // TODO: Remove
                 $timecode = $timecodes[$i];
                 $firstIndex = $timecode->start;
                 $lastIndex = $timecode->end;
@@ -271,21 +268,35 @@ class Lyrics {
                 $txtLastTime = round($referenceWords[$lastIndex]->end / 1000, 2);    
                 $txtTimecodes = str_pad("Line $txtIndex: $txtFirstTime - $txtLastTime", 30, ' ', STR_PAD_RIGHT);
 
-                $refWords = array_slice($referenceWords, $firstIndex, $lastIndex - $firstIndex);
+                $refWords = array_slice($referenceWords, $firstIndex, $lastIndex - $firstIndex + 1); // TODO: +1 needed ?
                 $refLine = join(' ', array_column($refWords, 'text'));
                 $txtLine = str_pad($timecode->line, 70, ' ', STR_PAD_RIGHT);
                 $txtRefLine = str_pad($refLine, 70, ' ', STR_PAD_RIGHT);
+                if (in_array($i, $firstLinesIndexes)) {
+                    echo("\033[1;32m");
+                    //$txtLine = "\033[1;32m$txtLine\033[0m";
+                    //$txtRefLine = "\033[1;32m$txtRefLine\033[0m";
+                    $txtRefLine .= "\033[0m";
+                }
                 echo("$txtTimecodes    $txtLine| $txtRefLine\n");
             }
         }
 
         // Print line by line in live
         if ($DEBUG_RESULT === 'all' || $DEBUG_RESULT === 'live') {
+            echo("Press enter to start live lyrics...\n");
+            $handle = fopen('php://stdin', 'r');
+            $line = fgets($handle);
+            fclose($handle);
+
             $currTime = 0;
             for ($i = 0; $i < count($timecodes); $i++) {
                 $timecode = $timecodes[$i];
                 $firstIndex = $timecode->start;
                 $lastIndex = $timecode->end;
+
+                if ($firstIndex >= count($referenceWords) || $lastIndex >= count($referenceWords))
+                    continue;
 
                 // Define duration to the next line
                 $firstTime = $referenceWords[$firstIndex]->start;
@@ -294,7 +305,6 @@ class Lyrics {
                 // Check
                 if ($duration <= 0) {
                     echo("Warning: Duration < 0 (line start before previous one)\n");
-                    //return;
                 } else {
                     // Wait
                     usleep($duration * 1000);
@@ -305,6 +315,41 @@ class Lyrics {
                 echo($timecode->line . "\n");
             }
         }
+
+        // Get verses timecodes
+        $versesTimecodes = array();
+
+        // Get first line of each verse
+        $verses = $this->GetVerses();
+        $firstLinesIndexes = array_reduce($verses, function($acc, $verse) {
+            $acc[] = end($acc) + count($verse);
+            return $acc;
+        }, [0]);
+
+        for ($i = 0; $i < $this->GetVersesCount(); $i++) {
+            $lastVerse = $i === $this->GetVersesCount() - 1;
+            $currTimecode = $timecodes[$firstLinesIndexes[$i]];
+            if ($lastVerse) $nextTimecode = $timecodes[count($timecodes) - 1];
+            else   $nextTimecode = $timecodes[$firstLinesIndexes[$i + 1] - 1];
+
+            $status = 'ok';
+            $startTime = $referenceWords[$currTimecode->start]->start;
+            $endTime = $referenceWords[$nextTimecode->end]->end;
+
+            // Times errors
+            if ($endTime == 0 || $endTime < $startTime ||
+                $endTime - $startTime < 1000 * count($verses[$i])) {
+                $status = 'error';
+            }
+
+            $versesTimecodes[] = array(
+                'status' => $status,
+                'start' => round($startTime / 1000, 2),
+                'end' => round($endTime / 1000, 2)
+            );
+        }
+
+        return $versesTimecodes;
     }
 }
 

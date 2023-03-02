@@ -47,12 +47,80 @@ class AssemblyAIWord {
     }
 
     /**
+     * Search for a word in the lyrics
+     * @param AssemblyAIWord[] $referenceWords
+     * @param string $word
+     * @param int $startIndex Start index of reference words (positive integer)
+     * @param int|false $endIndex End index of reference words (positive integer or false if no end)
+     * @return int|false Return absolute index of word in reference words or false if not found
+     */
+    public static function search($referenceWords, $word, $startIndex = 0, $endIndex = false) {
+
+        // Check if indexes are valid
+        $refWordsLength = count($referenceWords);
+        if ($startIndex < 0) {
+            $startIndex = 0;
+        }
+        if ($startIndex >= $refWordsLength) {
+            $startIndex = $refWordsLength - 1;
+        }
+        if ($endIndex !== false && $endIndex < 0) {
+            $endIndex = 0;
+        }
+        if ($endIndex === false || $endIndex >= $refWordsLength) {
+            $endIndex = $refWordsLength - 1;
+        }
+
+        // Define search range
+        $average = ($startIndex + $endIndex) / 2;
+        $firstValue = floor($average);
+        $lastValue = ($average % 1 !== 0) ? $endIndex + 1 : $startIndex - 1;
+
+        // Define increment function (positive/negative: 1, -2, 3, -4...)
+        $incrementValue = 1;
+        $resetIncrementValue = function() use (&$incrementValue) { $incrementValue = 1; };
+        $increment = function(&$i) use (&$incrementValue) {
+            $i += $incrementValue;
+            $incrementValue = $incrementValue > 0 ? -$incrementValue - 1 : -$incrementValue + 1;
+        };
+
+        // Precise search
+        $resetIncrementValue();
+        for ($i = $firstValue; $i != $lastValue; $increment($i)) {
+            $refWord = $referenceWords[$i];
+            if ($refWord->cleanText === $word) {
+                return $i;
+            }
+        }
+
+        // Approximate search
+        $minKey = false;
+        $minDistance = 99;
+        $resetIncrementValue();
+        for ($i = $firstValue; $i != $lastValue; $increment($i)) {
+            $refWord = $referenceWords[$i];
+            $distance = $refWord->compare($word);
+            if ($distance < $minDistance) {
+                $minKey = $i;
+                $minDistance = $distance;
+            }
+        }
+
+        // Not found
+        if ($minKey === false || $minDistance > strlen($word) / 2) {
+            return false;
+        }
+
+        return $minKey;
+    }
+
+    /**
      * Word to compare
      * @param string $word
      * @return int Levenshtein distance
      */
     public function compare($word) {
-        return levenshtein($this->cleanText, $word, 2, 1, 2);
+        return levenshtein($this->cleanText, $word, 1, 2, 2);
     }
 }
 
@@ -139,9 +207,10 @@ class AssemblyAI {
 
     /**
      * @param string $transcriptID
-     * @return (AssemblyAIWord|string|false)[] Object with transcript data and error message
+     * @param string|false $error
+     * @return AssemblyAIWord|false Object with transcript data and error message
      */
-    public function GetTranscript($transcriptID, $wait = true) {
+    public function GetTranscript($transcriptID, &$error = false) {
         if (!$transcriptID) return false;
 
         $curl = curl_init();
@@ -185,12 +254,15 @@ class AssemblyAI {
         }
         curl_close($curl);
 
-        if ($status === 'success' && $error === false) {
-            $convertFunc = fn($mixedWord) => new AssemblyAIWord($mixedWord);
-            $response = array_map($convertFunc, $response);
+        if ($status !== 'completed') {
+            $error = "AssemblyAI error: Invalid status ($status)";
+            return false;
         }
 
-        return array($response, $error);
+        $convertFunc = fn($mixedWord) => new AssemblyAIWord($mixedWord);
+        $response = array_map($convertFunc, $response['words']);
+
+        return $response;
     }
 }
 

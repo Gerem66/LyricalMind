@@ -14,6 +14,7 @@ use LyricalMind\AssemblyAIException;
 
 require_once __DIR__ . '/src/bash.php';
 require_once __DIR__ . '/src/utils.php';
+require_once __DIR__ . '/src/proxy.php';
 require_once __DIR__ . '/src/output.php';
 require_once __DIR__ . '/src/lyrics.php';
 require_once __DIR__ . '/src/scrapper.php';
@@ -144,21 +145,22 @@ class LyricalMind
             $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
             $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
             //print_r($transcriptID);
-            list($result, $error) = $this->assemblyAI->GetTranscript($transcriptID);
+            $result = $this->assemblyAI->GetTranscript($transcriptID, $error);
             if ($result === false || $error !== false) {
                 $output->status = 'error';
                 $output->error = "Error transcribing file: $error";
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
             }
-            $referenceWords = $result['words']; // Or 'text'
+            $referenceWords = $result;
 
             // Speech recognition on vocals (AssemblyAI)
             // Sync lyrics with speech recognition (php script)
-            $timecodes = $lyrics->SyncStructure($referenceWords);
-            if ($timecodes === false || count($timecodes) ===0) {
+            $syncError = false;
+            $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
+            if ($timecodes === false || $syncError !== false) {
                 $output->status = 'error';
-                $output->error = 'Lyrics: lyrics not synced';
+                $output->error = "Lyrics: lyrics not synced ($syncError)";
                 $output->total_time = round(microtime(true) - $startTime, 2);
                 return $output;
             }
