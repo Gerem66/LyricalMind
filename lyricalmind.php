@@ -78,118 +78,128 @@ class LyricalMind
      * @param bool $syncLyrics Needs AssemblyAI API key & SpotifyAPI class
      * @return LyricalMindOutput
      */
-    public function GetLyrics($artists, $title, $syncLyrics = false) {
+    public function GetLyricsByName($artists, $title, $syncLyrics = false) {
         $output = new LyricalMindOutput();
         $output->artists = explode(',', $artists);
         $output->title = $title;
 
-        $startTime = microtime(true);
+        // Get spotidy ID for download
+        $spotifyID = $this->spotifyAPI->GetIdByName($artists, $title);
+        if ($spotifyID === false) {
+            return $output->SetStatus('error', 1, 'SpotifyAPI: Song ID not found');
+        }
 
-        // Check database
-        // TODO
+        return $this->GetLyricsByID($spotifyID, $syncLyrics);
+    }
 
-        // Scrapper
-        $lyricsRaw = scrapper($artists, $title, $output->lyrics_source);
-        if ($lyricsRaw === false) {
-            $output->status = 'error';
-            $output->status_code = 1;
-            $output->error = 'LyricsMind: Lyrics not found';
-            $output->total_time = round(microtime(true) - $startTime, 2);
+    public function GetLyricsByID($spotifyID, $syncLyrics = false) {
+        $output = new LyricalMindOutput();
+
+        // Get song info
+        $infoSuccess = $this->GetSongInfo($output, $spotifyID);
+        if ($infoSuccess === false) {
             return $output;
         }
+
+        // Scrapper
+        $lyricsRaw = scrapper($output->artists[0], $output->title, $output->lyrics_source);
+        if ($lyricsRaw === false) {
+            return $output->SetStatus('error', 2, 'LyricsMind: Lyrics not found');
+        }
+
         $lyrics = new Lyrics($lyricsRaw);
         $output->lyrics = $lyrics->GetVerses();
 
         if ($syncLyrics) {
-            // Check SpotifyAPI class
-            if (!class_exists('SpotifyAPI'))
-                throw new AssemblyAIException('SpotifyAPI class not found');
-            if ($this->spotifyAPI === false)
-                throw new AssemblyAIException('SpotifyAPI class not defined');
-
-            // Check AssemblyAI API
-            if ($this->assemblyAI === false)
-                throw new AssemblyAIException('AssemblyAI API key not defined');
-
-            // Get ID for download
-            $output->id = $this->spotifyAPI->GetIdByName($artists, $title);
-            if ($output->id === false) {
-                $output->status = 'error';
-                $output->status_code = 2;
-                $output->error = 'SpotifyAPI: Song not found';
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-
-            $song = $this->spotifyAPI->GetAudioFeature([$output->id]);
-            if ($song === false || count($song) !== 1) {
-                $output->status = 'error';
-                $output->status_code = 2;
-                $output->error = 'SpotifyAPI: Song not found';
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-
-            $output->bpm = $song[0]['tempo'];
-            $output->key = $song[0]['key'];
-            $output->mode = $song[0]['mode'];
-
-            // Download audio (SpotifyAPI > spotdl)
-            $downloaded = $this->spotifyAPI->Download($output->id, $this->tempVocalsPath);
-            if ($downloaded === false) {
-                $output->status = 'error';
-                $output->status_code = 3;
-                $output->error = 'SpotifyAPI: song not downloaded';
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-
-            // Spleet audio & save vocals (spleeter / ffmpeg)
-            $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
-            $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
-            $spleeted = SPLEETER_separateAudioFile($filenameDownloaded, $filenameSpleeted);
-            if ($spleeted === false) {
-                $output->status = 'error';
-                $output->status_code = 4;
-                $output->error = 'Spleeter: vocals not separated';
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-            $output->voice_source = $filenameSpleeted;
-
-            // Get timecodes from audio reference
-            $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
-            $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
-            //print_r($transcriptID);
-            $result = $this->assemblyAI->GetTranscript($transcriptID, $error);
-            if ($result === false || $error !== false) {
-                $output->status = 'error';
-                $output->status_code = 5;
-                $output->error = "Error transcribing file: $error";
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-            $referenceWords = $result;
-
-            // Speech recognition on vocals (AssemblyAI)
-            // Sync lyrics with speech recognition (php script)
-            $syncError = false;
-            $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
-            if ($timecodes === false || $syncError !== false) {
-                $output->status = 'error';
-                $output->status_code = 6;
-                $output->error = "Lyrics: lyrics not synced ($syncError)";
-                $output->total_time = round(microtime(true) - $startTime, 2);
-                return $output;
-            }
-            $output->timecodes = $timecodes;
-
-            // Save lyrics in database ? (DataBase ?)
-            // TODO
+            $this->SyncLyrics($output, $lyrics);
         }
 
-        $output->total_time = round(microtime(true) - $startTime, 2);
         return $output;
+    }
+
+    /**
+     * Get song info (bpm, key & mode)
+     * @param LyricalMindOutput $output
+     * @param string $spotifyID
+     * @return bool True if success
+     */
+    private function GetSongInfo(&$output, $spotifyID) {
+        if (count($output->artists) === 0 || $output->title === false) {
+            $song = $this->spotifyAPI->GetTrack($spotifyID, $status);
+            if ($status !== 200) {
+                $output->SetStatus('error', 1, 'SpotifyAPI: GetTrack failed');
+                return false;
+            }
+            $artists = array_filter($song['artists'], fn($artist) => $artist['type'] === 'artist');
+            $artists = array_map(fn($artist) => $artist['name'], $artists);
+            $output->artists = $artists;
+            $output->title = $song['name'];
+
+        }
+
+        $song = $this->spotifyAPI->GetAudioFeature([$spotifyID]);
+        if ($song === false || count($song) !== 1) {
+            $output->SetStatus('error', 1, 'SpotifyAPI: GetAudioFeature failed');
+            return false;
+        }
+
+        $output->id = $spotifyID;
+        $output->bpm = $song[0]['tempo'];
+        $output->key = $song[0]['key'];
+        $output->mode = $song[0]['mode'];
+        return true;
+    }
+
+    /**
+     * Sync lyrics with AssemblyAI
+     * @param LyricalMindOutput $output
+     * @param Lyrics $lyrics
+     * @return LyricalMindOutput
+     */
+    private function SyncLyrics(&$output, $lyrics) {
+        // Check SpotifyAPI class
+        if (!class_exists('SpotifyAPI'))
+            throw new AssemblyAIException('SpotifyAPI class not found');
+        if ($this->spotifyAPI === false)
+            throw new AssemblyAIException('SpotifyAPI class not defined');
+
+        // Check AssemblyAI API
+        if ($this->assemblyAI === false)
+            throw new AssemblyAIException('AssemblyAI API key not defined');
+
+        // Download audio (SpotifyAPI > spotdl)
+        $downloaded = $this->spotifyAPI->Download($output->id, $this->tempVocalsPath);
+        if ($downloaded === false) {
+            return $output->SetStatus('error', 3, 'SpotifyAPI: song not downloaded');
+        }
+
+        // Spleet audio & save vocals (spleeter / ffmpeg)
+        $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
+        $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
+        $spleeted = SPLEETER_separateAudioFile($filenameDownloaded, $filenameSpleeted);
+        if ($spleeted === false) {
+            return $output->SetStatus('error', 4, 'Spleeter: vocals not separated');
+        }
+        $output->voice_source = $filenameSpleeted;
+
+        // Get timecodes from audio reference
+        $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
+        $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
+        //print_r($transcriptID);
+        $result = $this->assemblyAI->GetTranscript($transcriptID, $error);
+        if ($result === false || $error !== false) {
+            return $output->SetStatus('error', 5, "AssemblyAI: error transcribing file ($error)");
+        }
+        $referenceWords = $result;
+
+        // Speech recognition on vocals (AssemblyAI)
+        // Sync lyrics with speech recognition (php script)
+        $syncError = false;
+        $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
+        if ($timecodes === false || $syncError !== false) {
+            return $output->SetStatus('error', 6, "LyricalMind: lyrics not synced ($syncError)");
+        }
+        $output->timecodes = $timecodes;
     }
 }
 

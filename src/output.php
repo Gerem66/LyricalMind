@@ -34,8 +34,8 @@ class LyricalMindOutput {
     /**
      * Status code of the request
      * - 0 => Success
-     * - 1 => Lyrics not found
-     * - 2 => Spotidy song not foud
+     * - 1 => Spotify song not foud
+     * - 2 => Lyrics not found
      * - 3 => Song not downloaded
      * - 4 => Song not spleeted
      * - 5 => Speech to text failed
@@ -64,9 +64,9 @@ class LyricalMindOutput {
 
     /**
      * Title of the song
-     * @var string
+     * @var string|false
      */
-    public $title = '';
+    public $title = false;
 
     /**
      * Key of the song
@@ -88,7 +88,7 @@ class LyricalMindOutput {
 
     /**
      * Lyrics of the song (array of verses)
-     * @var string|false
+     * @var array|false
      */
     public $lyrics = false;
 
@@ -97,6 +97,12 @@ class LyricalMindOutput {
      * @var VerseTimecode[]|false
      */
     public $timecodes = false;
+
+    /**
+     * Start time of the request (temp variable)
+     * @var float
+     */
+    private $start_time = 0.0;
 
     /**
      * Total time of the request
@@ -116,8 +122,53 @@ class LyricalMindOutput {
      */
     public $voice_source = false;
 
+    /**
+     * LyricalMindOutput constructor
+     */
+    public function __construct() {
+        $this->start_time = microtime(true);
+    }
+
     public function __toString() {
-        return json_encode($this);
+        // Set total time
+        $this->total_time = microtime(true) - $this->start_time;
+
+        // Remove start time
+        $start_time = $this->start_time;
+        unset($this->start_time);
+
+        // Return json encoded object
+        $output = json_encode($this);
+
+        // Reset start time
+        $this->start_time = $start_time;
+
+        // Check if json_encode failed
+        if ($output === false) {
+            // Return error
+            return json_encode(array(
+                'status' => 'error',
+                'status_code' => 0,
+                'error' => 'LyricalMind: JSON encoding failed'
+            ));
+        }
+
+        // Return output
+        return $output;
+    }
+
+    /**
+     * Set status of the request
+     * @param 'success'|'error' $status Status of the request
+     * @param int $status_code Status code of the request (see class description)
+     * @param string|false $error Error message if status is error
+     * @return LyricalMindOutput $this
+     */
+    public function SetStatus($status = 'success', $status_code = 0, $error = false) {
+        $this->status = $status;
+        $this->status_code = $status_code;
+        $this->error = $error;
+        return $this;
     }
 }
 
