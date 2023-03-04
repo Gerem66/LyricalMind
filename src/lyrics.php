@@ -329,12 +329,26 @@ class Lyrics {
 
         for ($i = 0; $i < $this->GetVersesCount(); $i++) {
             $lastVerse = $i === $this->GetVersesCount() - 1;
-            $currTimecode = $timecodes[$firstLinesIndexes[$i]];
-            if ($lastVerse) $nextTimecode = $timecodes[count($timecodes) - 1];
-            else   $nextTimecode = $timecodes[$firstLinesIndexes[$i + 1] - 1];
+            $currIndex = $firstLinesIndexes[$i];
+            if ($currIndex < 0 || $currIndex >= count($timecodes)) {
+                $vt = new VerseTimecode('error', 0.0, 0.0);
+                array_push($versesTimecodes, $vt);
+                continue;
+            }
+            $currTimecode = $timecodes[$currIndex];
+            $nextTimecode = false;
+
+            if ($lastVerse) {
+                $nextTimecode = $timecodes[count($timecodes) - 1];
+            } else {
+                $nextIndex = $firstLinesIndexes[$i + 1] - 1;
+                if ($nextIndex > 0 && $nextIndex < count($timecodes)) {
+                    $nextTimecode = $timecodes[$nextIndex];
+                }
+            }
 
             // Lyrics index errors
-            if ($currTimecode->start < 0 || $currTimecode->end >= $refWordsCount ||
+            if ($currTimecode->start < 0 || $currTimecode->end >= $refWordsCount || $nextTimecode === false ||
                 $nextTimecode->start < 0 || $nextTimecode->end >= $refWordsCount) {
                 $vt = new VerseTimecode('error', 0.0, 0.0);
                 array_push($versesTimecodes, $vt);
