@@ -30,7 +30,7 @@ class LyricalMind
     /** @var SpotifyAPI|false $spotifyAPI */
     private $spotifyAPI = false;
 
-    private $configFile = __DIR__ . '/settings.json';
+    private $configFile = __DIR__ . '/config.json';
     private $tempVocalsPath = __DIR__ . '/tmp';
 
     /**

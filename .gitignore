@@ -4,7 +4,7 @@ vocals/
 pretrained_models
 
 test.php
-settings.json
+config.json
 
 *.txt
 *.wav

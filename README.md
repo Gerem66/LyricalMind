@@ -14,7 +14,7 @@
     2. Sync with lyrics
 
 ## Configuration
-* Create a configuration file named `settings.json` with content:
+* Create a configuration file named `config.json` with content:
 ```json
 {
     "debug": false,
