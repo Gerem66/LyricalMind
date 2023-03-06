@@ -84,7 +84,7 @@ class LyricalMind
         $output->title = $title;
 
         // Get spotidy ID for download
-        $spotifyID = $this->spotifyAPI->GetIdByName($artists, $title);
+        $spotifyID = $this->spotifyAPI->GetTrackIdByName($artists, $title);
         if ($spotifyID === false) {
             return $output->SetStatus('error', 1, 'SpotifyAPI: Song ID not found');
         }
@@ -125,8 +125,8 @@ class LyricalMind
      */
     private function GetSongInfo(&$output, $spotifyID) {
         if (count($output->artists) === 0 || $output->title === false) {
-            $song = $this->spotifyAPI->GetTrack($spotifyID, $status);
-            if ($status !== 200) {
+            $song = $this->spotifyAPI->GetTrack($spotifyID, $http_status);
+            if ($http_status !== 200) {
                 $output->SetStatus('error', 1, 'SpotifyAPI: GetTrack failed');
                 return false;
             }
@@ -168,7 +168,7 @@ class LyricalMind
             throw new AssemblyAIException('AssemblyAI API key not defined');
 
         // Download audio (SpotifyAPI > spotdl)
-        $downloaded = $this->spotifyAPI->Download($output->id, $this->tempVocalsPath);
+        $downloaded = $this->spotifyAPI->DownloadTrack($output->id, $this->tempVocalsPath);
         if ($downloaded === false) {
             return $output->SetStatus('error', 3, 'SpotifyAPI: song not downloaded');
         }
@@ -185,9 +185,8 @@ class LyricalMind
         // Get timecodes from audio reference
         $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
         $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
-        //print_r($transcriptID);
-        $result = $this->assemblyAI->GetTranscript($transcriptID, $error);
-        if ($result === false || $error !== false) {
+        $result = $this->assemblyAI->WaitTranscript($transcriptID, $error);
+        if ($result === false || $error !== null) {
             return $output->SetStatus('error', 5, "AssemblyAI: error transcribing file ($error)");
         }
         $referenceWords = $result;

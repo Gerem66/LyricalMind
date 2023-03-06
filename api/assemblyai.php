@@ -11,9 +11,9 @@ class AssemblyAIWord {
 
     /**
      * Clean (lower & ponctuation removed) text recognized by AssemblyAI
-     * @var string $cleanText
+     * @var string $clean_text
      */
-    public $cleanText;
+    public $clean_text;
 
     /**
      * Start of text in ms
@@ -43,38 +43,38 @@ class AssemblyAIWord {
         foreach ($word as $key => $value) {
             $this->{$key} = $value;
         }
-        $this->cleanText = CleanText($word['text']);
+        $this->clean_text = CleanText($word['text']);
     }
 
     /**
      * Search for a word in the lyrics
-     * @param AssemblyAIWord[] $referenceWords
+     * @param AssemblyAIWord[] $reference_words
      * @param string $word
-     * @param int $startIndex Start index of reference words (positive integer)
-     * @param int|false $endIndex End index of reference words (positive integer or false if no end)
+     * @param int $start_index Start index of reference words (positive integer)
+     * @param int|false $end_index End index of reference words (positive integer or false if no end)
      * @return int|false Return absolute index of word in reference words or false if not found
      */
-    public static function search($referenceWords, $word, $startIndex = 0, $endIndex = false) {
+    public static function search($reference_words, $word, $start_index = 0, $end_index = false) {
 
         // Check if indexes are valid
-        $refWordsLength = count($referenceWords);
-        if ($startIndex < 0) {
-            $startIndex = 0;
+        $refWordsLength = count($reference_words);
+        if ($start_index < 0) {
+            $start_index = 0;
         }
-        if ($startIndex >= $refWordsLength) {
-            $startIndex = $refWordsLength - 1;
+        if ($start_index >= $refWordsLength) {
+            $start_index = $refWordsLength - 1;
         }
-        if ($endIndex !== false && $endIndex < 0) {
-            $endIndex = 0;
+        if ($end_index !== false && $end_index < 0) {
+            $end_index = 0;
         }
-        if ($endIndex === false || $endIndex >= $refWordsLength) {
-            $endIndex = $refWordsLength - 1;
+        if ($end_index === false || $end_index >= $refWordsLength) {
+            $end_index = $refWordsLength - 1;
         }
 
         // Define search range
-        $average = ($startIndex + $endIndex) / 2;
+        $average = ($start_index + $end_index) / 2;
         $firstValue = floor($average);
-        $lastValue = ($average % 1 !== 0) ? $endIndex + 1 : $startIndex - 1;
+        $lastValue = ($average % 1 !== 0) ? $end_index + 1 : $start_index - 1;
 
         // Define increment function (positive/negative: 1, -2, 3, -4...)
         $incrementValue = 1;
@@ -89,8 +89,8 @@ class AssemblyAIWord {
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
             if ($i < 0 || $i >= $refWordsLength) continue;
 
-            $refWord = $referenceWords[$i];
-            if ($refWord->cleanText === $word) {
+            $refWord = $reference_words[$i];
+            if ($refWord->clean_text === $word) {
                 return $i;
             }
         }
@@ -102,7 +102,7 @@ class AssemblyAIWord {
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
             if ($i < 0 || $i >= $refWordsLength) continue;
 
-            $refWord = $referenceWords[$i];
+            $refWord = $reference_words[$i];
             $distance = $refWord->compare($word);
             if ($distance < $minDistance) {
                 $minKey = $i;
@@ -124,7 +124,7 @@ class AssemblyAIWord {
      * @return int Levenshtein distance
      */
     public function compare($word) {
-        return levenshtein($this->cleanText, $word, 1, 2, 2);
+        return levenshtein($this->clean_text, $word, 1, 2, 2);
     }
 }
 
@@ -141,10 +141,11 @@ class AssemblyAI {
 
     /**
      * Upload audio file to AssemblyAI and return upload URL
-     * @param string $filepath
+     * @param string $filepath Path to audio file
+     * @param int|null $http_status HTTP status code
      * @return string|false
      */
-    public function UploadFile($filepath) {
+    public function UploadFile($filepath, &$http_status = null) {
         if (!$filepath || !file_exists($filepath)) {
             return false;
         }
@@ -159,11 +160,10 @@ class AssemblyAI {
         ]);
 
         $response = curl_exec($curl);
-        $err = curl_error($curl);
+        $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
 
-        if ($err) {
-            echo 'cURL Error #:' . $err;
+        if ($http_status !== 200) {
             return false;
         }
 
@@ -171,17 +171,18 @@ class AssemblyAI {
     }
 
     /**
-     * @param string $url
-     * @param string $languageCode
+     * @param string $url Upload URL
+     * @param string $language_code Language code (default: en_us)
+     * @param int|null $http_status HTTP status code
      * @return string|false Transcript ID
      */
-    public function SubmitAudioFile($url, $languageCode = 'en_us') {
+    public function SubmitAudioFile($url, $language_code = 'en_us', &$http_status = null) {
         if (!$url) return false;
 
         $curl = curl_init();
         $data = array(
             'audio_url' => $url,
-            'language_code' => $languageCode
+            'language_code' => $language_code
         );
         curl_setopt_array($curl, [
             CURLOPT_URL => 'https://api.assemblyai.com/v2/transcript',
@@ -192,17 +193,15 @@ class AssemblyAI {
         ]);
 
         $response = curl_exec($curl);
-        $err = curl_error($curl);
+        $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
 
-        if ($err) {
-            echo('cURL Error #:' . $err);
+        if ($http_status !== 200) {
             return false;
         }
 
         $response = json_decode($response, true);
         if (!checkDict($response, 'id')) {
-            echo('AssemblyAI: Invalid response (no ID)');
             return false;
         }
 
@@ -210,44 +209,63 @@ class AssemblyAI {
     }
 
     /**
-     * @param string $transcriptID
-     * @param string|false $error
-     * @return AssemblyAIWord|false Object with transcript data and error message
+     * Check if transcript is ready
+     * @param string $transcript_id Transcript ID
+     * @param 'queued'|'processing'|'error'|'completed' $state Transcript state
+     * @return mixed|false AssemblyAI response (or false on error)
      */
-    public function GetTranscript($transcriptID, &$error = false) {
-        if (!$transcriptID) return false;
+    public function GetTrancscriptState($transcript_id, &$state) {
+        if (!$transcript_id) return false;
 
+        // Init curl
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_URL => "https://api.assemblyai.com/v2/transcript/$transcriptID",
+            CURLOPT_URL => "https://api.assemblyai.com/v2/transcript/$transcript_id",
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST => 'GET',
             CURLOPT_HTTPHEADER => [ "authorization: {$this->API_KEY}" ],
         ]);
 
+        // Get transcript status
+        $response = curl_exec($curl);
+        $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        // Response error
+        if ($http_status !== 200) {
+            $state = 'error';
+            return false;
+        }
+
+        // Invalid response
+        $response = json_decode($response, true);
+        if ($response === null || !isset($response['status'])) {
+            $state = 'error';
+            return false;
+        }
+
+        // Return state
+        $state = $response['status'];
+        return $response;
+    }
+
+    /**
+     * Wait for transcript to be ready
+     * @param string $transcript_id
+     * @param string|false $error
+     * @return AssemblyAIWord|false Object with transcript data and error message
+     */
+    public function WaitTranscript($transcript_id, &$error = null) {
+        if (!$transcript_id) return false;
+
         $status = null;
         $response = false;
-        $error = false;
         while ($status === null || $status === 'queued' || $status === 'processing') {
             // Get transcript status
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-            if ($err) {
-                $error = 'AssemblyAI cURL Error #:' . $err;
-                return false;
-            }
-
-            $response = json_decode($response, true);
-            if ($response === null || !isset($response['status'])) {
-                $error = 'AssemblyAI error: Invalid response';
-                return false;
-            }
-
-            $status = $response['status'];
+            $response = $this->GetTrancscriptState($transcript_id, $status);
 
             // Check errors
-            if ($status === 'error') {
-                $error = 'AssemblyAI error: ' . $response['error'];
+            if ($status === 'error' || $response === false) {
                 return false;
             }
 
@@ -256,7 +274,6 @@ class AssemblyAI {
                 sleep(4);
             }
         }
-        curl_close($curl);
 
         if ($status !== 'completed') {
             $error = "AssemblyAI error: Invalid status ($status)";

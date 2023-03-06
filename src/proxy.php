@@ -29,6 +29,7 @@ $error_codes = [
  * @param int $retry Number of retry if failed, with a new random proxy
  * @param string $required Required string in the content
  * @return string|false Content of the URL, or false if failed or no proxy available
+ * @throws Exception If proxies file not found
  */
 function RequestWithProxy($url, $timeout = 5, $retry = 10, $required = '') {
     global $error_codes;
@@ -36,8 +37,7 @@ function RequestWithProxy($url, $timeout = 5, $retry = 10, $required = '') {
     // Check if proxies file exists
     $proxiesFile = __DIR__ . '/proxies.txt';
     if (!file_exists($proxiesFile)) {
-        echo("Proxies file not found: {$proxiesFile}\n");
-        return false;
+        throw new Exception("Proxies file not found: {$proxiesFile}");
     }
 
     // List of proxy
