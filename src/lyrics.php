@@ -206,7 +206,7 @@ class Lyrics {
                 if ($DEBUG) {
                     $wordsCount = count($words);
                     echo("Hmm: {$timecodes[$l]->start} + {$wordsCount} = {$s}\n");
-                    echo("AAA: $s - " . join(', ', array_slice(array_column($referenceWords, 'cleanText'), $s - $offset, 2*$offset)) . "\n");
+                    echo("AAA: $s - " . join(', ', array_slice(array_column($referenceWords, 'clean_text'), $s - $offset, 2*$offset)) . "\n");
                 }
 
                 $newIndex = AssemblyAIWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset, $DEBUG);
@@ -252,7 +252,6 @@ class Lyrics {
                 $firstLinesIndexes[] = $total;
                 $total += count($verses[$i]);
             }
-            //print_r($firstLinesIndexes);
 
             for ($i = 0; $i < count($timecodes); $i++) {
                 $timecode = $timecodes[$i];
