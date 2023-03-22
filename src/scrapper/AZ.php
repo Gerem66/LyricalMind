@@ -9,7 +9,7 @@
     function GetLyricsFromAZ($artists, $title, &$source) {
         // Artists rename - artiste1artiste2artiste3
         $artists = strtolower($artists);
-        $charstoremove = [ ' et ', ' & ', '.', 'è', '-', ' ' ];
+        $charstoremove = [ ' et ', ' & ', '.', 'è', '-', ' ', '$' ];
         foreach ($charstoremove as $c)
             $artists = str_replace($c, '', $artists);
         if (strpos($artists, ',')) $artists = explode(',', $artists)[0];

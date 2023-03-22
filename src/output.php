@@ -34,7 +34,7 @@ class LyricalMindOutput {
     /**
      * Status code of the request
      * - 0 => Success
-     * - 1 => Spotify song not foud
+     * - 1 => Spotify song not found
      * - 2 => Lyrics not found
      * - 3 => Song not downloaded
      * - 4 => Song not spleeted

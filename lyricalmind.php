@@ -38,7 +38,7 @@ class LyricalMind
      * @param SpotifyAPI|false $spotifyAPI SpotifyAPI class (false to disable)
      * @throws \AssemblyAI\AssemblyAIException If settings file not found
      */
-    public function __construct($spotifyAPI = false) {
+    public function __construct($spotifyAPI = false, $tempVocalsPath = false) {
         if (!file_exists($this->configFile)) {
             throw new AssemblyAIException('Settings file not found');
         }
@@ -56,6 +56,12 @@ class LyricalMind
         }
 
         // Create temp vocals folder
+        if ($tempVocalsPath !== false) {
+            $this->tempVocalsPath = $tempVocalsPath;
+            if (str_ends_with($this->tempVocalsPath, '/')) {
+                $this->tempVocalsPath = substr($this->tempVocalsPath, 0, strlen($this->tempVocalsPath) - 1);
+            }
+        }
         if (!file_exists($this->tempVocalsPath)) {
             bash('mkdir ' . $this->tempVocalsPath);
         }
