@@ -4,9 +4,9 @@
  * @param string $inputFile
  * @param string $outputFile
  * @param string $tempDirectory
- * @return boolean Success of Spleeter command
+ * @return boolean Success of Open unmix command
  */
-function SPLEETER_separateAudioFile($inputFile, $outputFile, $tempDirectory = '/tmp/spleeter/') {
+function SeparateAudioFile($inputFile, $outputFile, $tempDirectory = '/tmp/umx/') {
     if (!str_ends_with($tempDirectory, '/')) $tempDirectory .= '/';
     if (file_exists($outputFile)) return true;
     if (!file_exists($inputFile)) return false;
@@ -15,8 +15,8 @@ function SPLEETER_separateAudioFile($inputFile, $outputFile, $tempDirectory = '/
     $id = explode('.', end($pathSplit))[0];
     $tempDirectoryID = $tempDirectory . $id . '/';
 
-    // Spleeter
-    $command = "python3 -m spleeter separate \"$inputFile\" -p spleeter:2stems -o \"{$tempDirectory}\"";
+    // Open unmix
+    $command = "umx --outdir \"{$tempDirectory}\" \"$inputFile\" 2>&1 > /dev/null | grep '*'";
     $status = bash($command, $output);
     if ($status !== 0) return false;
 

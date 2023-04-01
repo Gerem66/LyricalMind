@@ -28,6 +28,7 @@
 
 ## Packages
 - [AssemblyAI](https://www.assemblyai.com)
+- [Open Unmix](https://github.com/sigsep/open-unmix-pytorch)
 
 ## TODO (0/12)
 - [ ] Test AssemblyAI PHP script

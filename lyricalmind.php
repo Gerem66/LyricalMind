@@ -183,7 +183,7 @@ class LyricalMind
         // Spleet audio & save vocals (spleeter / ffmpeg)
         $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
         $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
-        $spleeted = SPLEETER_separateAudioFile($filenameDownloaded, $filenameSpleeted);
+        $spleeted = SeparateAudioFile($filenameDownloaded, $filenameSpleeted);
         if ($spleeted === false) {
             return $output->SetStatus('error', 4, 'Spleeter: vocals not separated');
         }
