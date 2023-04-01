@@ -16,7 +16,7 @@ function SeparateAudioFile($inputFile, $outputFile, $tempDirectory = '/tmp/umx/'
     $tempDirectoryID = $tempDirectory . $id . '/';
 
     // Open unmix
-    $command = "umx --outdir \"{$tempDirectory}\" \"$inputFile\" 2>&1 > /dev/null | grep '*'";
+    $command = "umx --outdir \"{$tempDirectory}\" \"$inputFile\"";
     $status = bash($command, $output);
     if ($status !== 0) return false;
 
