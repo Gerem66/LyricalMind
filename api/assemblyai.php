@@ -173,10 +173,11 @@ class AssemblyAI {
     /**
      * @param string $url Upload URL
      * @param string $language_code Language code (default: en_us)
+     * @param string[]|null $word_boost Word boost (default: null)
      * @param int|null $http_status HTTP status code
      * @return string|false Transcript ID
      */
-    public function SubmitAudioFile($url, $language_code = 'en_us', &$http_status = null) {
+    public function SubmitAudioFile($url, $language_code = 'en_us', $word_boost = null, &$http_status = null) {
         if (!$url) return false;
 
         $curl = curl_init();
@@ -184,6 +185,10 @@ class AssemblyAI {
             'audio_url' => $url,
             'language_code' => $language_code
         );
+        if ($word_boost !== null) {
+            $data['word_boost'] = $word_boost;
+            $data['boost_param'] = 'high';
+        }
         curl_setopt_array($curl, [
             CURLOPT_URL => 'https://api.assemblyai.com/v2/transcript',
             CURLOPT_RETURNTRANSFER => true,

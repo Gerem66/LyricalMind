@@ -139,6 +139,11 @@ class Lyrics {
         // 2. Corrections - Adjust start and end
         $offset = 4;
         for ($l = 0; $l < $this->linesCount; $l++) {
+            if ($timecodes[$l] === null) {
+                echo("/!\\ Timecode is null at index $l\n");
+                continue;
+            }
+
             //$DEBUG = $l <= 3;
             $line = $timecodes[$l]->line;
             $words = explode(' ', $line);

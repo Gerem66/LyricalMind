@@ -18,6 +18,7 @@ require_once __DIR__ . '/src/proxy.php';
 require_once __DIR__ . '/src/output.php';
 require_once __DIR__ . '/src/lyrics.php';
 require_once __DIR__ . '/src/scrapper.php';
+require_once __DIR__ . '/src/spleeter.php';
 require_once __DIR__ . '/src/exceptions.php';
 require_once __DIR__ . '/api/assemblyai.php';
 
