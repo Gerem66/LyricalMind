@@ -17,7 +17,7 @@ function SeparateAudioFile($inputFile, $outputFile, $tempDirectory = '/tmp/umx/'
 
     // Open unmix
     $command = "umx --outdir \"{$tempDirectory}\" \"$inputFile\"";
-    $status = bash($command, $output);
+    $status = bash($command, $output, false, true);
     if ($status !== 0) return false;
 
     // Move vocal file (with FFMPEG to 320kbps)

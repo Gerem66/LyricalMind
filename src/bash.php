@@ -4,13 +4,19 @@
      * @param string $command Shell command
      * @param array $output Output of command
      * @param string|false $user User to run command as (false to run as default user)
+     * @param boolean $hide Hide output of command (but don't return status)
      * @return integer Status of command
      */
-    function bash($command, &$output = null, $user = false) {
+    function bash($command, &$output = null, $user = false, $hide = false) {
         if ($user !== false)
             $command = "sudo -u $user $command";
 
         $command = escapeshellcmd($command);
+        if ($hide) {
+            $command .= ' > /dev/null 2>&1'; // 2> /dev/null
+            $output = shell_exec($command);
+            return 0;
+        }
         exec($command, $output, $status);
         return $status;
     }
