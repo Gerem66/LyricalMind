@@ -139,7 +139,8 @@ class Lyrics {
         // 2. Corrections - Adjust start and end
         $offset = 4;
         for ($l = 0; $l < $this->linesCount; $l++) {
-            if ($timecodes[$l] === null) {
+            if ($l < 0 || $l >= $this->linesCount || $timecodes[$l] === null) {
+                // TODO: Advanced logs
                 echo("/!\\ Timecode is null at index $l\n");
                 continue;
             }
