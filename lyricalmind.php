@@ -141,7 +141,7 @@ class LyricalMind
             $artists = array_map(fn($artist) => $artist['name'], $artists);
             $output->artists = $artists;
             $output->title = $song['name'];
-
+            $output->duration = $song['duration_ms'];
         }
 
         $song = $this->spotifyAPI->GetAudioFeature([$spotifyID]);

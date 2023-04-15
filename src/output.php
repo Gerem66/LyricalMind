@@ -87,6 +87,12 @@ class LyricalMindOutput {
     public $mode = 0;
 
     /**
+     * Duration of the song in milliseconds
+     * @var int
+     */
+    public $duration = 0;
+
+    /**
      * Lyrics of the song (array of verses)
      * @var array|false
      */

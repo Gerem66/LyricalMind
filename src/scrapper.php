@@ -2,6 +2,7 @@
 
     require_once __DIR__ . '/utils.php';
     require_once __DIR__ . '/scrapper/AZ.php';
+    require_once __DIR__ . '/scrapper/Genius.php';
     require_once __DIR__ . '/scrapper/P2C.php';
 
     /**
@@ -14,6 +15,7 @@
         $lyrics = false;
         $scrapFuncs = array(
             'GetLyricsFromAZ',
+            'GetLyricsFromGenius',
             'GetLyricsFromP2C'
         );
 
