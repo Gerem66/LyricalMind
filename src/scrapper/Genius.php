@@ -21,14 +21,13 @@ function GetLyricsFromGenius($artists, $title, &$source = null) {
     $title = str_replace(' ', '-', $title);
 
     // Get Lyrics from Genius
-    $url = "http://genius.com/$artists-$title-lyrics";
+    $url = "https://genius.com/$artists-$title-lyrics";
     $source = $url;
 
     $lyrics = RequestWithProxy($url, required: 'data-lyrics-container');
     if ($lyrics === false) return false;
 
     // Get lyrics from html
-    file_put_contents('genius.html', $lyrics);
     $lyrics = explode('<br/>', $lyrics);
     $firstExploded = explode('>', $lyrics[0]);
     $lyrics[0] = end($firstExploded);
@@ -39,10 +38,11 @@ function GetLyricsFromGenius($artists, $title, &$source = null) {
     $lyrics = array_map('html_entity_decode', $lyrics);
     $lyrics = array_map(fn($l) => (!str_starts_with($l, '[') && !str_ends_with($l, ']')) ? $l : '', $lyrics);
     $lyrics = implode("\n", $lyrics);
+    $lyrics = trim($lyrics);
+    while (str_contains($lyrics, "\n\n\n"))
+        $lyrics = str_replace("\n\n\n", "\n\n", $lyrics);
+
     return !!$lyrics ? $lyrics : false;
 }
-
-$lyrics = GetLyricsFromGenius('alkapote', 'plus haut');
-print_r($lyrics);
 
 ?>
