@@ -1,16 +1,9 @@
-# LyricsSync
-
-## Description
-
-## Dependencies
-- [PHP 8.1](https://www.php.net)
-- [Python 3.10](https://www.python.org)
-- [Optionnal] [SpotifyAPI](https://github.com/Gerem66/SpotifyAPI)
+# LyricalMind
+Version: 0.1.0
 
 ## Usage
 ```php
 <?php
-
 require_once __DIR__ . '/lib/SpotifyAPI/spotifyapi.php';
 require_once __DIR__ . '/lib/LyricalMind/lyricalmind.php';
 
@@ -24,7 +17,7 @@ $output = $lyricsMind->GetLyricsByName($artist, $title, $syncLyrics);
 
 ## How it works
 Get lyrics
-1. Get Spotify song ID if needed, bpm, key/mode, duration, ...
+1. Get Spotify song ID if needed, bpm, key/mode and duration
 2. Get lyrics from scraping (AZ, Genius, P2C)
 
 Synchronize lyrics (optional, need SpotifyAPI and AssemblyAI API key)
@@ -41,6 +34,7 @@ Synchronize lyrics (optional, need SpotifyAPI and AssemblyAI API key)
     "AssemblyAI_API_KEY": ""
 }
 ```
+Go to [SpotifyAPI](https://www.github.com/Gerem66/SpotifyAPI) to setup SpotifyAPI
 
 ## Status codes
 - 0 => Success
@@ -49,28 +43,32 @@ Synchronize lyrics (optional, need SpotifyAPI and AssemblyAI API key)
 - 3 => Song not downloaded
 - 4 => Song not spleeted
 - 5 => Speech to text failed
-- 6 => Lyrics not synced
+- 6 => Lyrics not synced (not enough words found)
 
-## Potentials lyrics sources
-- [Music Story](https://developers.music-story.com/fr/developpeurs/lyric) ?
-- [Lyrics.comm](https://lyrics.com) ?
+## Dependencies
+- [PHP 8.1](https://www.php.net)
+* Optional, needed for lyrics sync:
+    - [SpotifyAPI](https://github.com/Gerem66/SpotifyAPI)
+    - [AssemblyAI](https://www.assemblyai.com)
 
 ## Packages
-- [AssemblyAI](https://www.assemblyai.com)
-- [Open Unmix](https://github.com/sigsep/open-unmix-pytorch)
+* This project use:
+    - [SpotifyAPI](https://developer.spotify.com)
+    - [AssemblyAI](https://www.assemblyai.com)
+    - [Open Unmix](https://github.com/sigsep/open-unmix-pytorch)
+* Scraping:
+    - [AZ Lyrics](https://www.azlyrics.com)
+    - [Genius](https://genius.com)
+    - [Paroles2Chansons](https://www.paroles2chansons.com)
 
-## TODO (0/12)
-- [ ] Test AssemblyAI PHP script
-- [ ] Update "getlyrics"
-    - [ ] Get lyrics from spotify
-    - [ ] Add websites to scrap
-- [x] Song
-    - [x] Download from Spotify (spotdl)
-    - [x] Spleeter from PHP (python3 spleeter)
-- [x] Implement AssemblyAI
-- [ ] Make database to store all data (prevent duplication requests)
-- [ ] Remove python & unused scripts
-- [ ] Rewrite properly & optimize
-- [ ] Final tests
-- [ ] Syncroniser les paroles ligne par ligne
-- [ ] Syncroniser les paroles mot par mot
+## TODO
+- [ ] GetLyrics: Acheter une base de données de paroles
+- [ ] DD/DD_db: Faire un système de logs avancé
+- [ ] Algo: Affiner les déductions avec les fichier audio
+- [ ] Algo: Syncroniser les paroles mot par mot
+
+## Potentials lyrics sources
+- [Musixmatch](https://www.musixmatch.com)
+- [Lyricfind](https://www.lyricfind.com)
+- [Music Story](https://developers.music-story.com/fr/developpeurs/lyric)
+- [Lyrics.com](https://lyrics.com)

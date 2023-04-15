@@ -29,6 +29,15 @@
             $source = null;
         }
 
+        // Format source
+        if ($source !== null) {
+            $source = str_replace('https://', '', $source);
+            $source = str_replace('http://', '', $source);
+            if (substr($source, -1) === '/') {
+                $source = substr($source, 0, -1);
+            }
+        }
+
         return $lyrics;
     }
 
