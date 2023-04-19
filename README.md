@@ -62,8 +62,9 @@ Go to [SpotifyAPI](https://www.github.com/Gerem66/SpotifyAPI) to setup SpotifyAP
     - [Paroles2Chansons](https://www.paroles2chansons.com)
 
 ## TODO
+- [x] Noter les signatures rythmique (spotifyAPI)
+- [x] DD/DD_db: Faire un système de logs avancé
 - [ ] GetLyrics: Acheter une base de données de paroles
-- [ ] DD/DD_db: Faire un système de logs avancé
 - [ ] Algo: Affiner les déductions avec les fichier audio
 - [ ] Algo: Syncroniser les paroles mot par mot
 

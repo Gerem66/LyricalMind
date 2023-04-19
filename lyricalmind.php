@@ -125,7 +125,7 @@ class LyricalMind
     }
 
     /**
-     * Get song info (bpm, key & mode)
+     * Get song info (bpm, key, mode, duration and time signature)
      * @param LyricalMindOutput $output
      * @param string $spotifyID
      * @return bool True if success
@@ -154,6 +154,8 @@ class LyricalMind
         $output->bpm = $song[0]['tempo'];
         $output->key = $song[0]['key'];
         $output->mode = $song[0]['mode'];
+        $output->duration = $song[0]['duration_ms'];
+        $output->time_signature = $song[0]['time_signature'];
         return true;
     }
 

@@ -93,6 +93,12 @@ class LyricalMindOutput {
     public $duration = 0;
 
     /**
+     * Time signature of the song (3-7)
+     * @var int
+     */
+    public $time_signature = 4;
+
+    /**
      * Lyrics of the song (array of verses)
      * @var array|false
      */

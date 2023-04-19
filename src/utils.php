@@ -110,4 +110,11 @@ function GetClientIP() {
     return 'UNKNOWN';
 }
 
+function WriteLog($message, $logFile = 'global') {
+    $logFile = __DIR__ . "/../logs/$logFile.log";
+    $date = date('Y-m-d H:i:s');
+    $message = "[$date] $message\n";
+    file_put_contents($logFile, $message, FILE_APPEND);
+}
+
 ?>

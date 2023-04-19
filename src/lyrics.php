@@ -140,8 +140,10 @@ class Lyrics {
         $offset = 4;
         for ($l = 0; $l < $this->linesCount; $l++) {
             if ($l < 0 || $l >= $this->linesCount || $timecodes[$l] === null) {
-                // TODO: Advanced logs
-                echo("/!\\ Timecode is null at index $l\n");
+                $class = 'LinesCount: ' . json_encode($this->linesCount) . "\t";
+                $class .= 'Verses: ' . json_encode($this->verses) . "\t";
+                $class .= 'Timecodes: ' . json_encode($timecodes);
+                WriteLog("Timecode is null at index $l - $class", 'lyrics');
                 continue;
             }
 
