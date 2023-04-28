@@ -31,6 +31,9 @@ class LyricalMind
     /** @var SpotifyAPI|false $spotifyAPI */
     private $spotifyAPI = false;
 
+    /** @var bool $consoleOutput */
+    private $consoleOutput = false;
+
     private $configFile = __DIR__ . '/config.json';
     private $tempVocalsPath = __DIR__ . '/tmp';
 
@@ -49,6 +52,10 @@ class LyricalMind
         $keyAssemblyAI = $settings['AssemblyAI_API_KEY'];
         if (isset($keyAssemblyAI)) {
             $this->assemblyAI = new AssemblyAI($keyAssemblyAI);
+        }
+
+        if (isset($settings['console_log'])) {
+            $this->consoleOutput = $settings['console_log'];
         }
 
         // Define SpotifyAPI
@@ -76,6 +83,12 @@ class LyricalMind
         if (file_exists($filepath_vocals)) bash('rm -rf ' . $filepath_vocals);
     }
 
+    public function Print($message) {
+        if ($this->consoleOutput) {
+            echo("$message\n");
+        }
+    }
+
     /**
      * Main script: return lyrics of a song, or false if not found
      * If syncLyrics is true, will try to sync lyrics found with AssemblyAI
@@ -93,6 +106,7 @@ class LyricalMind
         // Get spotidy ID for download
         $spotifyID = $this->spotifyAPI->GetTrackIdByName($artists, $title);
         if ($spotifyID === false) {
+            $this->Print("[$spotifyID] SpotifyAPI: Song ID not found");
             return $output->SetStatus('error', 1, 'SpotifyAPI: Song ID not found');
         }
 
@@ -103,14 +117,17 @@ class LyricalMind
         $output = new LyricalMindOutput();
 
         // Get song info
+        $this->Print("[$spotifyID] Get song info");
         $infoSuccess = $this->GetSongInfo($output, $spotifyID);
         if ($infoSuccess === false) {
             return $output;
         }
 
         // Scrapper
+        $this->Print("[$spotifyID] Scrap lyrics");
         $lyricsRaw = scrapper($output->artists[0], $output->title, $output->lyrics_source);
         if ($lyricsRaw === false) {
+            $this->Print("[$spotifyID] LyricsMind: Lyrics not found");
             return $output->SetStatus('error', 2, 'LyricsMind: Lyrics not found');
         }
 
@@ -118,6 +135,7 @@ class LyricalMind
         $output->lyrics = $lyrics->GetVerses();
 
         if ($syncLyrics) {
+            $this->Print("[$spotifyID] Sync lyrics");
             $this->SyncLyrics($output, $lyrics);
         }
 

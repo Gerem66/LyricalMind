@@ -31,6 +31,7 @@ Synchronize lyrics (optional, need SpotifyAPI and AssemblyAI API key)
 ```json
 {
     "debug": false,
+    "console_log": false,
     "AssemblyAI_API_KEY": ""
 }
 ```
