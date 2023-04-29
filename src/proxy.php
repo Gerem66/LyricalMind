@@ -55,11 +55,12 @@ function RequestWithProxy($url, $timeout = 5, $retry = 10, $required = '') {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_PROXY, $ip);
     curl_setopt($ch, CURLOPT_PROXYPORT, $port);
+    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
 
     // Get content
     $content = curl_exec($ch);

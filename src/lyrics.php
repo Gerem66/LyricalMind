@@ -58,16 +58,21 @@ class Lyrics {
                 return !empty($line) && !preg_match('/^\(.*\)$/', $line) && !preg_match('/^\[.*\]$/', $line);
             }));
 
-            // Add verse to the list
-            array_push($this->verses, $lines);
-            array_push($this->versesClean, $linesClean);
+            while (count($linesClean) > 0) {
+                $newLines = array_splice($lines, 0, 4);
+                $newLinesClean = array_splice($linesClean, 0, 4);
 
-            // Update stats
-            $this->versesCount++;
-            $this->linesCount += count($lines);
-            foreach ($lines as $line) {
-                $words = explode(' ', $line);
-                $this->wordsCount += count($words);
+                // Add verse to the list
+                array_push($this->verses, $newLines);
+                array_push($this->versesClean, $newLinesClean);
+
+                // Update stats
+                $this->versesCount++;
+                $this->linesCount += count($lines);
+                foreach ($lines as $line) {
+                    $words = explode(' ', $line);
+                    $this->wordsCount += count($words);
+                }
             }
         }
     }
@@ -335,7 +340,7 @@ class Lyrics {
         }, [0]);
 
         for ($i = 0; $i < $this->GetVersesCount(); $i++) {
-            $lastVerse = $i === $this->GetVersesCount() - 1;
+            $isLastVerse = $i === $this->GetVersesCount() - 1;
             $currIndex = $firstLinesIndexes[$i];
             if ($currIndex < 0 || $currIndex >= count($timecodes)) {
                 $vt = new VerseTimecode('error', 0.0, 0.0);
@@ -345,7 +350,7 @@ class Lyrics {
             $currTimecode = $timecodes[$currIndex];
             $nextTimecode = false;
 
-            if ($lastVerse) {
+            if ($isLastVerse) {
                 $nextTimecode = $timecodes[count($timecodes) - 1];
             } else {
                 $nextIndex = $firstLinesIndexes[$i + 1] - 1;

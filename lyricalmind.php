@@ -135,7 +135,6 @@ class LyricalMind
         $output->lyrics = $lyrics->GetVerses();
 
         if ($syncLyrics) {
-            $this->Print("[$spotifyID] Sync lyrics");
             $this->SyncLyrics($output, $lyrics);
         }
 
@@ -195,6 +194,7 @@ class LyricalMind
             throw new AssemblyAIException('AssemblyAI API key not defined');
 
         // Download audio (SpotifyAPI > spotdl)
+        $this->Print("[$output->id] Download audio");
         $downloaded = $this->spotifyAPI->DownloadTrack($output->id, $this->tempVocalsPath);
         if ($downloaded === false) {
             return $output->SetStatus('error', 3, 'SpotifyAPI: song not downloaded');
@@ -203,6 +203,7 @@ class LyricalMind
         // Spleet audio & save vocals (spleeter / ffmpeg)
         $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
         $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
+        $this->Print("[$output->id] Spleet audio");
         $spleeted = SeparateAudioFile($filenameDownloaded, $filenameSpleeted);
         if ($spleeted === false) {
             return $output->SetStatus('error', 4, 'Spleeter: vocals not separated');
@@ -210,6 +211,7 @@ class LyricalMind
         $output->voice_source = $filenameSpleeted;
 
         // Get timecodes from audio reference
+        $this->Print("[$output->id] AssemblyAI: speech recognition");
         $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
         $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
         $result = $this->assemblyAI->WaitTranscript($transcriptID, $error);
@@ -221,6 +223,7 @@ class LyricalMind
         // Speech recognition on vocals (AssemblyAI)
         // Sync lyrics with speech recognition (php script)
         $syncError = false;
+        $this->Print("[$output->id] Sync lyrics");
         $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
         if ($timecodes === false || $syncError !== false) {
             return $output->SetStatus('error', 6, "LyricalMind: lyrics not synced ($syncError)");
