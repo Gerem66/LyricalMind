@@ -9,17 +9,21 @@ require_once __DIR__ . '/scrapper/P2C.php';
  * Return lyrics of a song
  * @param string $artists
  * @param string $title
+ * @param function $callback
  * @return string|false
  */
-function scrapper($artists, $title, &$source) {
+function scrapper($artists, $title, &$source, $callback = null) {
     $lyrics = false;
     $scrapFuncs = array(
-        'GetLyricsFromAZ',
-        'GetLyricsFromGenius',
-        'GetLyricsFromP2C'
+        'Genius' => 'GetLyricsFromGenius',
+        'AZ' => 'GetLyricsFromAZ',
+        'P2C' => 'GetLyricsFromP2C'
     );
 
-    foreach ($scrapFuncs as $scrapFunc) {
+    foreach ($scrapFuncs as $scrapName => $scrapFunc) {
+        if ($callback !== null) {
+            $callback($scrapName);
+        }
         $lyrics = $scrapFunc($artists, $title, $source);
         if ($lyrics !== false) break;
     }

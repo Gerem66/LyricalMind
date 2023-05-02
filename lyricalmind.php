@@ -117,7 +117,7 @@ class LyricalMind
         $output = new LyricalMindOutput();
 
         // Get song info
-        $this->Print("[$spotifyID] Get song info");
+        $this->Print("[$spotifyID] SpotifyAPI: Get song info");
         $infoSuccess = $this->GetSongInfo($output, $spotifyID);
         if ($infoSuccess === false) {
             return $output;
@@ -125,7 +125,12 @@ class LyricalMind
 
         // Scrapper
         $this->Print("[$spotifyID] Scrap lyrics");
-        $lyricsRaw = scrapper($output->artists[0], $output->title, $output->lyrics_source);
+        $lyricsRaw = scrapper(
+            $output->artists[0],
+            $output->title,
+            $output->lyrics_source,
+            fn($message) => $this->Print("[$spotifyID] Scrap lyrics: $message")
+        );
         if ($lyricsRaw === false) {
             $this->Print("[$spotifyID] LyricsMind: Lyrics not found");
             return $output->SetStatus('error', 2, 'LyricsMind: Lyrics not found');
@@ -194,39 +199,39 @@ class LyricalMind
             throw new AssemblyAIException('AssemblyAI API key not defined');
 
         // Download audio (SpotifyAPI > spotdl)
-        $this->Print("[$output->id] Download audio");
+        $this->Print("[$output->id] SpotDL: Download audio");
         $downloaded = $this->spotifyAPI->DownloadTrack($output->id, $this->tempVocalsPath);
         if ($downloaded === false) {
-            return $output->SetStatus('error', 3, 'SpotifyAPI: song not downloaded');
+            return $output->SetStatus('error', 3, 'SpotifyAPI: Song not downloaded');
         }
 
         // Spleet audio & save vocals (spleeter / ffmpeg)
         $filenameDownloaded = "{$this->tempVocalsPath}/{$output->id}.mp3";
         $filenameSpleeted = "{$this->tempVocalsPath}/{$output->id}_vocals.mp3";
-        $this->Print("[$output->id] Spleet audio");
+        $this->Print("[$output->id] Open Unmix: Separate audio");
         $spleeted = SeparateAudioFile($filenameDownloaded, $filenameSpleeted);
         if ($spleeted === false) {
-            return $output->SetStatus('error', 4, 'Spleeter: vocals not separated');
+            return $output->SetStatus('error', 4, 'Spleeter: Vocals not separated');
         }
         $output->voice_source = $filenameSpleeted;
 
         // Get timecodes from audio reference
-        $this->Print("[$output->id] AssemblyAI: speech recognition");
+        $this->Print("[$output->id] AssemblyAI: Speech recognition");
         $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
         $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
         $result = $this->assemblyAI->WaitTranscript($transcriptID, $error);
         if ($result === false || $error !== null) {
-            return $output->SetStatus('error', 5, "AssemblyAI: error transcribing file ($error)");
+            return $output->SetStatus('error', 5, "AssemblyAI: Error transcribing file ($error)");
         }
         $referenceWords = $result;
 
         // Speech recognition on vocals (AssemblyAI)
         // Sync lyrics with speech recognition (php script)
         $syncError = false;
-        $this->Print("[$output->id] Sync lyrics");
+        $this->Print("[$output->id] LyricalMind: Sync lyrics");
         $timecodes = $lyrics->SyncStructure($referenceWords, $syncError);
         if ($timecodes === false || $syncError !== false) {
-            return $output->SetStatus('error', 6, "LyricalMind: lyrics not synced ($syncError)");
+            return $output->SetStatus('error', 6, "LyricalMind: Lyrics not synced ($syncError)");
         }
         $output->timecodes = $timecodes;
     }
