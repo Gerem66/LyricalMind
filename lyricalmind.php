@@ -2,15 +2,13 @@
 
 /**
  * LyricalMind
- * Get lyrics of a song from scraping and can sync them with AssemblyAI
+ * Get lyrics of a song from scraping and can sync them with WhisperX
  * @author Gerem66 <contact@gerem.ca>
  * @version 0.0.1
  * @link https://github.com/Gerem66/LyricalMind
  */
 
 //namespace LyricalMind;
-
-use LyricalMind\AssemblyAIException;
 
 require_once __DIR__ . '/src/bash.php';
 require_once __DIR__ . '/src/utils.php';
@@ -19,15 +17,11 @@ require_once __DIR__ . '/src/output.php';
 require_once __DIR__ . '/src/lyrics.php';
 require_once __DIR__ . '/src/scrapper.php';
 require_once __DIR__ . '/src/spleeter.php';
-require_once __DIR__ . '/src/exceptions.php';
-require_once __DIR__ . '/api/assemblyai.php';
+require_once __DIR__ . '/src/whisperx.php';
 
 
 class LyricalMind
 {
-    /** @var AssemblyAI|false $assemblyAI */
-    private $assemblyAI = false;
-
     /** @var SpotifyAPI|false $spotifyAPI */
     private $spotifyAPI = false;
 
@@ -40,22 +34,17 @@ class LyricalMind
     /**
      * LyricalMind constructor.
      * @param SpotifyAPI|false $spotifyAPI SpotifyAPI class (false to disable)
-     * @throws \AssemblyAI\AssemblyAIException If settings file not found
+     * @param string|false $tempVocalsPath Path to temp vocals folder (false to default to /tmp)
+     * @param bool $showConsoleOutput Show console output
+     * @throws Exception If settings file not found
      */
-    public function __construct($spotifyAPI = false, $tempVocalsPath = false) {
+    public function __construct($spotifyAPI = false, $tempVocalsPath = false, $showConsoleOutput = false) {
         if (!file_exists($this->configFile)) {
-            throw new AssemblyAIException('Settings file not found');
+            throw new Exception('Settings file not found');
         }
 
-        // Define AssemblyAI
-        $settings = json_decode(file_get_contents($this->configFile), true);
-        $keyAssemblyAI = $settings['AssemblyAI_API_KEY'];
-        if (isset($keyAssemblyAI)) {
-            $this->assemblyAI = new AssemblyAI($keyAssemblyAI);
-        }
-
-        if (isset($settings['console_log'])) {
-            $this->consoleOutput = $settings['console_log'];
+        if ($showConsoleOutput !== false) {
+            $this->consoleOutput = true;
         }
 
         // Define SpotifyAPI
@@ -71,7 +60,10 @@ class LyricalMind
             }
         }
         if (!file_exists($this->tempVocalsPath)) {
-            bash('mkdir ' . $this->tempVocalsPath);
+            $status = bash('mkdir ' . $this->tempVocalsPath);
+            if ($status !== 0) {
+                throw new Exception('Cannot create temp vocals folder');
+            }
         }
     }
 
@@ -83,7 +75,7 @@ class LyricalMind
         if (file_exists($filepath_vocals)) bash('rm -rf ' . $filepath_vocals);
     }
 
-    public function Print($message) {
+    private function Print($message) {
         if ($this->consoleOutput) {
             echo("$message\n");
         }
@@ -91,11 +83,11 @@ class LyricalMind
 
     /**
      * Main script: return lyrics of a song, or false if not found
-     * If syncLyrics is true, will try to sync lyrics found with AssemblyAI
+     * If syncLyrics is true, will try to sync lyrics found with WhisperX
      *     or return lyrics from speech recognition if lyrics are not found
      * @param string $artists
      * @param string $title
-     * @param bool $syncLyrics Needs AssemblyAI API key & SpotifyAPI class
+     * @param bool $syncLyrics Needs WhisperX package & SpotifyAPI class
      * @return LyricalMindOutput
      */
     public function GetLyricsByName($artists, $title, $syncLyrics = false) {
@@ -182,21 +174,18 @@ class LyricalMind
     }
 
     /**
-     * Sync lyrics with AssemblyAI
+     * Sync lyrics with WhisperX
      * @param LyricalMindOutput $output
      * @param Lyrics $lyrics
      * @return LyricalMindOutput
+     * @throws Exception
      */
     private function SyncLyrics(&$output, $lyrics) {
         // Check SpotifyAPI class
         if (!class_exists('SpotifyAPI'))
-            throw new AssemblyAIException('SpotifyAPI class not found');
+            throw new Exception('SpotifyAPI class not found');
         if ($this->spotifyAPI === false)
-            throw new AssemblyAIException('SpotifyAPI class not defined');
-
-        // Check AssemblyAI API
-        if ($this->assemblyAI === false)
-            throw new AssemblyAIException('AssemblyAI API key not defined');
+            throw new Exception('SpotifyAPI class not defined');
 
         // Download audio (SpotifyAPI > spotdl)
         $this->Print("[$output->id] SpotDL: Download audio");
@@ -216,16 +205,12 @@ class LyricalMind
         $output->voice_source = $filenameSpleeted;
 
         // Get timecodes from audio reference
-        $this->Print("[$output->id] AssemblyAI: Speech recognition");
-        $audio_url = $this->assemblyAI->UploadFile($filenameSpleeted);
-        $transcriptID = $this->assemblyAI->SubmitAudioFile($audio_url, 'en_us');
-        $result = $this->assemblyAI->WaitTranscript($transcriptID, $error);
-        if ($result === false || $error !== null) {
-            return $output->SetStatus('error', 5, "AssemblyAI: Error transcribing file ($error)");
+        $this->Print("[$output->id] WhisperX: Speech recognition");
+        $referenceWords = SpeechToText($filenameSpleeted);
+        if ($referenceWords === false) {
+            return $output->SetStatus('error', 5, 'WhisperX: Error transcribing file');
         }
-        $referenceWords = $result;
 
-        // Speech recognition on vocals (AssemblyAI)
         // Sync lyrics with speech recognition (php script)
         $syncError = false;
         $this->Print("[$output->id] LyricalMind: Sync lyrics");

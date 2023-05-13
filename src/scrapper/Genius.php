@@ -11,12 +11,10 @@ require_once __DIR__ . '/../proxy.php';
  */
 function GetLyricsFromGenius($artists, $title, &$source = null) {
     // Artists rename - main-artist
-    $artists = strtolower($artists);
     $artists = stripAccents($artists);
     $artists = str_replace(' ', '-', $artists);
 
     // Title rename - word1-word2-word3
-    $title = strtolower($title);
     $title = stripAccents($title);
     $title = str_replace(' ', '-', $title);
 

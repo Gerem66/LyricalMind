@@ -20,19 +20,17 @@ Get lyrics
 1. Get Spotify song ID if needed, bpm, key/mode and duration
 2. Get lyrics from scraping (AZ, Genius, P2C)
 
-Synchronize lyrics (optional, need SpotifyAPI and AssemblyAI API key)
+Synchronize lyrics (optional, need SpotifyAPI and WhisperX)
 3. Download song from Spotify (spotdl)
 4. Separate vocals from song (unmix)
-5. Speech to text (AssemblyAI)
+5. Speech to text (WhisperX)
 6. Syncronize lyrics (compare lyrics with speech to text)
 
 ## Configuration
 * Create a configuration file named `config.json` with content:
 ```json
 {
-    "debug": false,
-    "console_log": false,
-    "AssemblyAI_API_KEY": ""
+    "debug": false
 }
 ```
 Go to [SpotifyAPI](https://www.github.com/Gerem66/SpotifyAPI) to setup SpotifyAPI
@@ -50,12 +48,12 @@ Go to [SpotifyAPI](https://www.github.com/Gerem66/SpotifyAPI) to setup SpotifyAP
 - [PHP 8.1](https://www.php.net)
 * Optional, needed for lyrics sync:
     - [SpotifyAPI](https://github.com/Gerem66/SpotifyAPI)
-    - [AssemblyAI](https://www.assemblyai.com)
+    - [WhisperX](https://github.com/m-bain/whisperX)
 
 ## Packages
 * This project use:
     - [SpotifyAPI](https://developer.spotify.com)
-    - [AssemblyAI](https://www.assemblyai.com)
+    - [WhisperX](https://github.com/m-bain/whisperX)
     - [Open Unmix](https://github.com/sigsep/open-unmix-pytorch)
 * Scraping:
     - [AZ Lyrics](https://www.azlyrics.com)

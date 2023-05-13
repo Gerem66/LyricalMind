@@ -8,13 +8,13 @@ class Timecode {
     public $line;
 
     /**
-     * Index of first word from WordReference (AssemblyAI result)
+     * Index of first word from WordReference (WhisperX result)
      * @var int $start
      */
     public $start;
 
     /**
-     * Index of last word from WordReference (AssemblyAI result)
+     * Index of last word from WordReference (WhisperX result)
      * @var int $end
      */
     public $end;
@@ -22,8 +22,8 @@ class Timecode {
     /**
      * Timecode constructor
      * @param string $line Verse content
-     * @param int $start Index of first word from WordReference (AssemblyAI result)
-     * @param int $end Index of last word from WordReference (AssemblyAI result)
+     * @param int $start Index of first word from WordReference (WhisperX result)
+     * @param int $end Index of last word from WordReference (WhisperX result)
      */
     public function __construct($line, $start, $end) {
         $this->line = $line;
@@ -58,21 +58,16 @@ class Lyrics {
                 return !empty($line) && !preg_match('/^\(.*\)$/', $line) && !preg_match('/^\[.*\]$/', $line);
             }));
 
-            while (count($linesClean) > 0) {
-                $newLines = array_splice($lines, 0, 4);
-                $newLinesClean = array_splice($linesClean, 0, 4);
+            // Add verse to the list
+            array_push($this->verses, $lines);
+            array_push($this->versesClean, $linesClean);
 
-                // Add verse to the list
-                array_push($this->verses, $newLines);
-                array_push($this->versesClean, $newLinesClean);
-
-                // Update stats
-                $this->versesCount++;
-                $this->linesCount += count($lines);
-                foreach ($lines as $line) {
-                    $words = explode(' ', $line);
-                    $this->wordsCount += count($words);
-                }
+            // Update stats
+            $this->versesCount++;
+            $this->linesCount += count($lines);
+            foreach ($lines as $line) {
+                $words = explode(' ', $line);
+                $this->wordsCount += count($words);
             }
         }
     }
@@ -96,7 +91,7 @@ class Lyrics {
     }
 
     /**
-     * @param AssemblyAIWord[] $referenceWords Reference words from AssemblyAI
+     * @param STTWord[] $referenceWords Reference words from WhisperX
      * @param string|false $error Error message if any
      * @return VerseTimecode[]|false Synchronized lyrics line by line
      */
@@ -110,7 +105,7 @@ class Lyrics {
         /** @var Timecode[] */
         $timecodes = array();
 
-        // 0. Count words from AssemblyAI reference and define average words per line
+        // 0. Count words from WhisperX reference and define average words per line
         $refWordsCount = count($referenceWords);
         $averageWordsInLine = floor($refWordsCount / $this->linesCount);
         if (count($referenceWords) === 0) {
@@ -122,7 +117,7 @@ class Lyrics {
         $maxLength = max($this->wordsCount, $refWordsCount);
         $delta = abs($this->wordsCount - $refWordsCount) / $maxLength;
         if ($DEBUG) echo("Words delta: $delta\n");
-        if ($delta > .25) {
+        if ($delta > .75) {
             $error = "Not enough words from reference ($refWordsCount/$this->wordsCount words found)";
             return false;
         }
@@ -194,7 +189,7 @@ class Lyrics {
                     $b = $indexStart + $offset;
                     echo("First word: $firstWordLine\n$a - $b\n");
                 }
-                $newIndex = AssemblyAIWord::search($referenceWords, $firstWordLine, $indexStart - $offset, $indexStart + $offset, $DEBUG);
+                $newIndex = STTWord::search($referenceWords, $firstWordLine, $indexStart - $offset, $indexStart + $offset, $DEBUG);
                 if ($newIndex !== false) {
                     if ($DEBUG) {
                         echo("Precise start found: {$timecodes[$l]->start} => {$newIndex}\n");
@@ -222,7 +217,7 @@ class Lyrics {
                     echo("AAA: $s - " . join(', ', array_slice(array_column($referenceWords, 'clean_text'), $s - $offset, 2*$offset)) . "\n");
                 }
 
-                $newIndex = AssemblyAIWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset, $DEBUG);
+                $newIndex = STTWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset, $DEBUG);
                 if ($newIndex !== false) {
                     if ($DEBUG) {
                         echo("Precise end found: {$timecodes[$l]->end} => {$newIndex}\n");

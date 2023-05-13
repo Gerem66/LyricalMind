@@ -1,12 +1,17 @@
 <?php
 
 function stripAccents($str) {
-    $from = 'àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ';
-    $to = 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY';
-    return strtolower(strtr($str, $from, $to));
+    // Remove accents
+    $str = iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+
+    // Remove special chars (keep only alphanumeric and space)
+    $str = preg_replace('/[^a-zA-Z0-9 ]/', '', $str);
+
+    return strtolower($str);
 }
 
 function CleanText($text) {
+    $text = iconv('UTF-8', 'ASCII//TRANSLIT', $text);
     $text = preg_replace('/[[:punct:]]/', '', $text);
     return strtolower($text);
 }
@@ -62,10 +67,10 @@ function CleanLyrics($lyrics) {
 }
 
 /**
- * @param AssemblyAIWord[] $referenceWords
+ * @param STTWord[] $referenceWords
  * @param int $index
  * @param int $offset
- * @return AssemblyAIWord[]|false
+ * @return STTWord[]|false
  */
 function GetRefWordsFromIndex($referenceWords, $index, $offset) {
     $index = max(0, $index - $offset);
