@@ -31,6 +31,9 @@ class LyricalMind
     private $configFile = __DIR__ . '/config.json';
     private $tempVocalsPath = __DIR__ . '/tmp';
 
+    private $initialTitle = '';
+    private $initialArtists = '';
+
     /**
      * LyricalMind constructor.
      * @param SpotifyAPI|false $spotifyAPI SpotifyAPI class (false to disable)
@@ -69,10 +72,18 @@ class LyricalMind
 
     public function RemoveTempFiles($id) {
         if ($id === false) return;
-        $filepath = "{$this->tempVocalsPath}/{$id}.mp3";
-        $filepath_vocals = "{$this->tempVocalsPath}/{$id}_vocals.mp3";
-        if (file_exists($filepath)) bash('rm -rf ' . $filepath);
-        if (file_exists($filepath_vocals)) bash('rm -rf ' . $filepath_vocals);
+
+        $filenames = [
+            "{$this->tempVocalsPath}/{$id}.mp3",
+            "{$this->tempVocalsPath}/{$id}_stt.txt",
+            "{$this->tempVocalsPath}/{$id}_lyrics.txt",
+            "{$this->tempVocalsPath}/{$id}_vocals.mp3"
+        ];
+        foreach ($filenames as $filename) {
+            if (file_exists($filename)) {
+                bash("rm -rf $filename");
+            }
+        }
     }
 
     private function Print($message) {
@@ -94,6 +105,8 @@ class LyricalMind
         $output = new LyricalMindOutput();
         $output->artists = explode(',', $artists);
         $output->title = $title;
+        $this->initialArtists = $artists;
+        $this->initialTitle = $title;
 
         // Get spotidy ID for download
         $spotifyID = $this->spotifyAPI->GetTrackIdByName($artists, $title);
@@ -117,11 +130,13 @@ class LyricalMind
 
         // Scrapper
         $this->Print("[$spotifyID] Scrap lyrics");
+        $file_lyrics = "{$this->tempVocalsPath}/{$spotifyID}_lyrics.txt";
         $lyricsRaw = scrapper(
-            $output->artists[0],
-            $output->title,
+            $this->initialArtists,
+            $this->initialTitle,
             $output->lyrics_source,
-            fn($message) => $this->Print("[$spotifyID] Scrap lyrics: $message")
+            fn($message) => $this->Print("[$spotifyID] Scrap lyrics: $message"),
+            $file_lyrics
         );
         if ($lyricsRaw === false) {
             $this->Print("[$spotifyID] LyricsMind: Lyrics not found");
@@ -205,8 +220,9 @@ class LyricalMind
         $output->voice_source = $filenameSpleeted;
 
         // Get timecodes from audio reference
+        $filenameSTT = "{$this->tempVocalsPath}/{$output->id}_stt.txt";
         $this->Print("[$output->id] WhisperX: Speech recognition");
-        $referenceWords = SpeechToText($filenameSpleeted);
+        $referenceWords = SpeechToText($filenameSpleeted, $filenameSTT);
         if ($referenceWords === false) {
             return $output->SetStatus('error', 5, 'WhisperX: Error transcribing file');
         }

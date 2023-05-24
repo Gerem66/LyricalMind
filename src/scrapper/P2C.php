@@ -14,7 +14,7 @@ function GetLyricsFromP2C($artists, $title, &$source) {
     $formatTitle = str_replace(['’', '\'', '"', ':', '.', ' - '], '', $formatTitle);
     $formatTitle = trim($formatTitle);
     $formatTitle = str_replace(' ', '-', $formatTitle);
-    $formatTitle = stripAccents($formatTitle);
+    $formatTitle = CleanText($formatTitle);
 
     // Format Artists
     $artists = strtolower($artists);
@@ -22,7 +22,7 @@ function GetLyricsFromP2C($artists, $title, &$source) {
         $artists = explode(',', $artists)[0];
     $artists = str_replace('\'', '-', $artists);
     $artists = str_replace(' ', '-', $artists);
-    $artists = stripAccents($artists);
+    $artists = CleanText($artists);
 
     // Get lyrics
     $p2c_url = "https://paroles2chansons.lemonde.fr/paroles-$artists/paroles-$formatTitle.html";

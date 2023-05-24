@@ -10,15 +10,23 @@ require_once __DIR__ . '/scrapper/P2C.php';
  * @param string $artists
  * @param string $title
  * @param function $callback
+ * @param string|null $outputfile
  * @return string|false
  */
-function scrapper($artists, $title, &$source, $callback = null) {
+function scrapper($artists, $title, &$source, $callback = null, $outputfile = null) {
     $lyrics = false;
     $scrapFuncs = array(
         'Genius' => 'GetLyricsFromGenius',
         'AZ' => 'GetLyricsFromAZ',
         'P2C' => 'GetLyricsFromP2C'
     );
+
+    // Check if lyrics are already saved
+    if ($outputfile !== null && file_exists($outputfile)) {
+        $lyrics = file_get_contents($outputfile);
+        $source = 'file';
+        return $lyrics;
+    }
 
     foreach ($scrapFuncs as $scrapName => $scrapFunc) {
         if ($callback !== null) {
@@ -40,6 +48,11 @@ function scrapper($artists, $title, &$source, $callback = null) {
         if (substr($source, -1) === '/') {
             $source = substr($source, 0, -1);
         }
+    }
+
+    // Save lyrics to file
+    if ($outputfile !== null && $lyrics !== false) {
+        file_put_contents($outputfile, $lyrics);
     }
 
     return $lyrics;

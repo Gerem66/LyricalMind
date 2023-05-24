@@ -20,6 +20,12 @@ class Timecode {
     public $end;
 
     /**
+     * True if the timecode is defined with precise timecode
+     * @var bool $definitive
+     */
+    public $definitive = false;
+
+    /**
      * Timecode constructor
      * @param string $line Verse content
      * @param int $start Index of first word from WordReference (WhisperX result)
@@ -53,7 +59,7 @@ class Lyrics {
             }, $lines);
 
             // Removes empty lines & lines wich starts and ends with brackets or parenthesis
-            $linesClean = array_values(array_filter($lines, function($line) {
+            $linesClean = array_values(array_filter($linesClean, function($line) {
                 $line = trim($line);
                 return !empty($line) && !preg_match('/^\(.*\)$/', $line) && !preg_match('/^\[.*\]$/', $line);
             }));
@@ -64,8 +70,8 @@ class Lyrics {
 
             // Update stats
             $this->versesCount++;
-            $this->linesCount += count($lines);
-            foreach ($lines as $line) {
+            $this->linesCount += count($linesClean);
+            foreach ($linesClean as $line) {
                 $words = explode(' ', $line);
                 $this->wordsCount += count($words);
             }
@@ -97,7 +103,7 @@ class Lyrics {
      */
     public function SyncStructure($referenceWords, &$error = false) {
         $DEBUG = false;
-        $DEBUG_RESULT = 'none'; // all, times, live or none
+        $DEBUG_RESULT = 'live'; // all, times, live or none
         if ($DEBUG) {
             echo('Total ref words: ' . count($referenceWords) . "\n");
         }
@@ -105,18 +111,17 @@ class Lyrics {
         /** @var Timecode[] */
         $timecodes = array();
 
-        // 0. Count words from WhisperX reference and define average words per line
+        // Count words from WhisperX reference and define average words per line
         $refWordsCount = count($referenceWords);
         $averageWordsInLine = floor($refWordsCount / $this->linesCount);
-        if (count($referenceWords) === 0) {
+        if ($refWordsCount === 0) {
             $error = 'No words found from reference';
             return false;
         }
 
-        // 0. Check words length, return if delta more than 25% difference
+        // Check words length, return if delta more than 25% difference
         $maxLength = max($this->wordsCount, $refWordsCount);
         $delta = abs($this->wordsCount - $refWordsCount) / $maxLength;
-        if ($DEBUG) echo("Words delta: $delta\n");
         if ($delta > .75) {
             $error = "Not enough words from reference ($refWordsCount/$this->wordsCount words found)";
             return false;
@@ -128,23 +133,25 @@ class Lyrics {
             $linesCount = count($this->versesClean[$i]);
             for ($j = 0; $j < $linesCount; $j++) {
                 $line = $this->versesClean[$i][$j];
-                $end = $start + $averageWordsInLine;
+                $end = min($start + $averageWordsInLine, $refWordsCount - 1);
                 $timecode = new Timecode($line, $start, $end);
 
                 array_push($timecodes, $timecode);
-                $start += $averageWordsInLine + 1;
+                $start += $averageWordsInLine;
             }
         }
 
-        // 2. Corrections - Adjust start and end
+        // 2. Search for timecodes
         $offset = 4;
         for ($l = 0; $l < $this->linesCount; $l++) {
+
+            // TODO - Remove cause it's useless
             if ($l < 0 || $l >= $this->linesCount || $timecodes[$l] === null) {
                 $class = 'LinesCount: ' . json_encode($this->linesCount) . "\t";
                 $class .= 'Verses: ' . json_encode($this->verses) . "\t";
                 $class .= 'Timecodes: ' . json_encode($timecodes);
-                WriteLog("Timecode is null at index $l - $class", 'lyrics');
-                continue;
+                print_r("Timecode is null at index $l - $class", 'lyrics');
+                exit;
             }
 
             //$DEBUG = $l <= 3;
@@ -152,27 +159,10 @@ class Lyrics {
             $words = explode(' ', $line);
             $words = array_map('CleanText', $words);
 
-            if ($DEBUG) {
-                echo("----------\n");
-                echo("Line index: $l\n");
-                echo("Offset: $offset\n");
-                print_r($timecodes[$l]);
-                echo("Words: " . implode(' ', $words) . "\n");
-            }
-            if ($timecodes[$l]->start > count($referenceWords) ||
-                $timecodes[$l]->end > count($referenceWords) ||
-                $timecodes[$l]->start < 0 ||
-                $timecodes[$l]->end < 0)
-                    break;
-
-            $indexMax = count($referenceWords) - 1;
             $indexStart = 0;
-            if ($l !== 0)
-                $indexStart = $timecodes[$l - 1]->end + 1;
-            if ($indexStart + $offset > $indexMax)
-                $indexStart = $indexMax - $offset;
+            $indexMax = $refWordsCount - 1;
 
-            // Get index start
+            // Get index start from last correct timecode
             for ($i = $l - 1; $i >= 0; $i--) {
                 if ($timecodes[$i]->end !== 0) {
                     $indexStart = $timecodes[$i]->end + 1;
@@ -180,28 +170,26 @@ class Lyrics {
                 }
             }
 
+            // Set index start to max if out of range
+            if ($indexStart + $offset > $indexMax)
+                $indexStart = $indexMax - $offset;
+
             // Adjust start
             $foundStart = false;
             for ($w = 0; $w < count($words) - 2; $w++) {
-                $firstWordLine = CleanText($words[$w]);
-                if ($DEBUG) {
-                    $a = $indexStart - $offset;
-                    $b = $indexStart + $offset;
-                    echo("First word: $firstWordLine\n$a - $b\n");
-                }
-                $newIndex = STTWord::search($referenceWords, $firstWordLine, $indexStart - $offset, $indexStart + $offset, $DEBUG);
-                if ($newIndex !== false) {
-                    if ($DEBUG) {
-                        echo("Precise start found: {$timecodes[$l]->start} => {$newIndex}\n");
-                    }
+                $firstWordLine = $words[$w];
 
+                $newIndex = STTWord::search(
+                    $referenceWords,
+                    $firstWordLine,
+                    $indexStart - $offset,
+                    $indexStart + $offset
+                );
+
+                if ($newIndex !== false) {
                     $foundStart = true;
                     $timecodes[$l]->start = $newIndex;
                     break;
-                } else {
-                    if ($DEBUG) {
-                        echo("Not found!\n");
-                    }
                 }
             }
 
@@ -217,7 +205,7 @@ class Lyrics {
                     echo("AAA: $s - " . join(', ', array_slice(array_column($referenceWords, 'clean_text'), $s - $offset, 2*$offset)) . "\n");
                 }
 
-                $newIndex = STTWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset, $DEBUG);
+                $newIndex = STTWord::search($referenceWords, $lastWordLine, $s - $offset, $s + $offset);
                 if ($newIndex !== false) {
                     if ($DEBUG) {
                         echo("Precise end found: {$timecodes[$l]->end} => {$newIndex}\n");
@@ -241,6 +229,8 @@ class Lyrics {
             } else if (!$foundStart && $foundEnd) {
                 if ($DEBUG) echo("End found, start not found\n");
                 $timecodes[$l]->start = $timecodes[$l]->end - count($words);
+            } else {
+                $timecodes[$l]->definitive = true;
             }
             if ($DEBUG) echo("Final found: {$timecodes[$l]->start} - {$timecodes[$l]->end}\n");
         }
@@ -248,6 +238,55 @@ class Lyrics {
         if (count($timecodes) === 0) {
             $error = 'No timecodes found';
             return false;
+        }
+
+        // 3. Corrections - Adjust start and end
+        $alive = true;
+        while ($alive) {
+            // 3.1. Find median
+            $medianData = array();
+            for ($i = 1; $i < count($timecodes); $i++) {
+                $timecode = $timecodes[$i];
+                $prevTimecode = $timecodes[$i - 1];
+
+                if (!$timecode->definitive || !$prevTimecode->definitive)
+                    continue;
+
+                $delta = $timecode->start - $prevTimecode->start;
+                array_push($medianData, $delta);
+            }
+            $median = Median($medianData);
+
+            // 3.2. Apply median to non definitive timecodes
+            $modification = 0;
+            for ($i = 1; $i < count($timecodes) - 1; $i++) {
+                $timecode = $timecodes[$i];
+                $prevTimecode = $timecodes[$i - 1];
+                $nextTimecode = $timecodes[$i + 1];
+                if ($timecode->definitive) {
+                    continue;
+                }
+
+                if ($prevTimecode->definitive && $nextTimecode->definitive) {
+                    $timecode->start = ($prevTimecode->start + $nextTimecode->start) / 2;
+                    $timecode->end = $timecode->start + count(explode(' ', $timecode->line));
+                    $timecode->definitive = true;
+                    $modification++;
+                } else if ($prevTimecode->definitive) {
+                    $timecode->start = $prevTimecode->start + $median;
+                    $timecode->end = $timecode->start + count(explode(' ', $timecode->line));
+                    $timecode->definitive = true;
+                    $modification++;
+                } else if ($nextTimecode->definitive) {
+                    $timecode->end = $nextTimecode->start - $median;
+                    $timecode->start = $timecode->end - count(explode(' ', $timecode->line));
+                    $timecode->definitive = true;
+                    $modification++;
+                }
+            }
+            if ($modification === 0) {
+                $alive = false;
+            }
         }
 
         // Print line sync & timecodes line by line
@@ -265,7 +304,7 @@ class Lyrics {
                 $timecode = $timecodes[$i];
                 $firstIndex = $timecode->start;
                 $lastIndex = $timecode->end;
-                if ($firstIndex >= count($referenceWords) || $lastIndex >= count($referenceWords))
+                if ($firstIndex >= $refWordsCount || $lastIndex >= $refWordsCount)
                     break;
                 if ($firstIndex < 0 || $lastIndex < 0)
                     continue;
@@ -306,7 +345,7 @@ class Lyrics {
                     continue;
 
                 // Define duration to the next line
-                $firstTime = $referenceWords[$firstIndex]->start;
+                $firstTime = @$referenceWords[$firstIndex]->start;
                 $duration = $firstTime - $currTime;
 
                 // Check

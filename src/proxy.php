@@ -31,7 +31,7 @@ $error_codes = [
  * @return string|false Content of the URL, or false if failed or no proxy available
  * @throws Exception If proxies file not found
  */
-function RequestWithProxy($url, $timeout = 10, $retry = 10, $required = '') {
+function RequestWithProxy($url, $timeout = 10, $retry = 15, $required = '') {
     global $error_codes;
 
     // Check if proxies file exists

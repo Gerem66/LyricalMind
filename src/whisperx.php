@@ -44,44 +44,33 @@ class STTWord {
      * @param STTWord[] $reference_words
      * @param string $word
      * @param int $start_index Start index of reference words (positive integer)
-     * @param int|false $end_index End index of reference words (positive integer or false if no end)
+     * @param int $end_index End index of reference words (positive integer)
      * @return int|false Return absolute index of word in reference words or false if not found
      */
-    public static function search($reference_words, $word, $start_index = 0, $end_index = false) {
-
+    public static function search($reference_words, $word, $start_index = 0, $end_index = 0) {
         // Check if indexes are valid
-        $refWordsLength = count($reference_words);
-        if ($start_index < 0) {
-            $start_index = 0;
-        }
-        if ($start_index >= $refWordsLength) {
-            $start_index = $refWordsLength - 1;
-        }
-        if ($end_index !== false && $end_index < 0) {
-            $end_index = 0;
-        }
-        if ($end_index === false || $end_index >= $refWordsLength) {
-            $end_index = $refWordsLength - 1;
+        $refWordsCount = count($reference_words);
+        $start_index = minmax($start_index, 0, $refWordsCount - 1);
+        if ($end_index <= 0 || $end_index >= $refWordsCount) {
+            $end_index = intval($refWordsCount - 1);
         }
 
         // Define search range
         $average = ($start_index + $end_index) / 2;
-        $firstValue = floor($average);
-        $lastValue = ($average % 1 !== 0) ? $end_index + 1 : $start_index - 1;
+        $firstValue = intval(floor($average));
+        $lastValue = fmod($average, 1) !== 0.0 ? $start_index - 1 : $end_index + 1;
 
-        // Define increment function (positive/negative: 1, -2, 3, -4...)
+        // Define increment function (positive/negative: +1, -2, +3, -4...)
         $incrementValue = 1;
         $resetIncrementValue = function() use (&$incrementValue) { $incrementValue = 1; };
         $increment = function(&$i) use (&$incrementValue) {
             $i += $incrementValue;
-            $incrementValue = $incrementValue > 0 ? -$incrementValue - 1 : -$incrementValue + 1;
+            $incrementValue = - $incrementValue + ($incrementValue > 0 ? -1 : +1);
         };
 
         // Precise search
         $resetIncrementValue();
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
-            if ($i < 0 || $i >= $refWordsLength) continue;
-
             $refWord = $reference_words[$i];
             if ($refWord->clean_text === $word) {
                 return $i;
@@ -93,8 +82,6 @@ class STTWord {
         $minDistance = 99;
         $resetIncrementValue();
         for ($i = $firstValue; $i != $lastValue; $increment($i)) {
-            if ($i < 0 || $i >= $refWordsLength) continue;
-
             $refWord = $reference_words[$i];
             $distance = $refWord->compare($word);
             if ($distance < $minDistance) {
@@ -123,9 +110,15 @@ class STTWord {
 
 /**
  * @param string $filepath Path to audio file
+ * @param string|null $outputfile Path to output file
  * @return STTWord[]|false Array of words or false on failure
  */
-function SpeechToText($filepath) {
+function SpeechToText($filepath, $outputfile = null) {
+    // Check if lyrics are already saved
+    if ($outputfile !== null && file_exists($outputfile)) {
+        return unserialize(file_get_contents($outputfile));
+    }
+
     $name = pathinfo($filepath, PATHINFO_FILENAME);
     $command = "whisperx --compute_type float32 --highlight_words True --output_format=json --output_dir /tmp/$name $filepath";
 
@@ -144,6 +137,11 @@ function SpeechToText($filepath) {
     # Convert to STTWord
     $convertFunc = fn($mixedWord) => new STTWord($mixedWord);
     $words = array_map($convertFunc, $data['word_segments']);
+
+    # Save all words data in a file
+    if ($outputfile !== null) {
+        file_put_contents($outputfile, serialize($words));
+    }
 
     # Remove temporary files
     unlink("/tmp/$name/$name.json");

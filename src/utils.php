@@ -1,15 +1,5 @@
 <?php
 
-function stripAccents($str) {
-    // Remove accents
-    $str = iconv('UTF-8', 'ASCII//TRANSLIT', $str);
-
-    // Remove special chars (keep only alphanumeric and space)
-    $str = preg_replace('/[^a-zA-Z0-9 ]/', '', $str);
-
-    return strtolower($str);
-}
-
 function CleanText($text) {
     $text = iconv('UTF-8', 'ASCII//TRANSLIT', $text);
     $text = preg_replace('/[[:punct:]]/', '', $text);
@@ -113,6 +103,30 @@ function GetClientIP() {
         }
     }
     return 'UNKNOWN';
+}
+
+/**
+ * @param int $value
+ * @param int $min
+ * @param int $max
+ * @return int
+ */
+function minmax($value, $min, $max) {
+    return min(max($value, $min), $max);
+}
+
+function Median($array) {
+    sort($array);
+    $count = count($array);
+    $middle = floor(($count - 1) / 2);
+    if ($count % 2) {
+        $median = $array[$middle];
+    } else {
+        $low = $array[$middle];
+        $high = $array[$middle + 1];
+        $median = (($low + $high) / 2);
+    }
+    return $median;
 }
 
 function WriteLog($message, $logFile = 'global') {

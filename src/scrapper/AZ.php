@@ -18,7 +18,7 @@ function GetLyricsFromAZ($artists, $title, &$source) {
     // Title rename - word1word2word3
     $title = str_replace(' ', '', $title);
     $title = strtolower($title);
-    $title = stripAccents($title);
+    $title = CleanText($title);
     if (strpos($title, '(feat')) $title = explode('(feat', $title)[0];
     if (strpos($title, 'ft.')) $title = explode('ft.', $title)[0];
     $charstoremove = [ ' et ', ' & ', '-', '\'', '.', ',', 'ô', 'ê', '(', ')', ' ' ];
