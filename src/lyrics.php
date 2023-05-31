@@ -403,30 +403,31 @@ class Lyrics {
             $start = $firstLinesIndexes[$i];
             $end = $firstLinesIndexes[$i + 1] - 1;
 
-            // Check if line of verse failed
-            $error = false;
-            for ($j = $start; $j < $end; $j++) {
-                if ($timecodes[$j]->start < 0 || $timecodes[$j]->end < 0 ||
-                    ($timecodes[$j]->start === 0 && $timecodes[$j]->end === 0) ||
-                    $timecodes[$j]->start >= count($referenceWords) || $timecodes[$j]->end >= count($referenceWords))
-                {
-                    $error = true;
-                    break;
-                }
-            }
-            if ($error) {
-                continue;
-            }
+            // Ignore all verses if one of them is not defined
+            //$error = false;
+            //for ($j = $start; $j < $end; $j++) {
+            //    if ($timecodes[$j]->start < 0 || $timecodes[$j]->end < 0 ||
+            //        ($timecodes[$j]->start === 0 && $timecodes[$j]->end === 0) ||
+            //        $timecodes[$j]->start >= count($referenceWords) || $timecodes[$j]->end >= count($referenceWords))
+            //    {
+            //        $error = true;
+            //        break;
+            //    }
+            //}
+            //if ($error) {
+            //    continue;
+            //}
 
             $verse = array();
             for ($j = $start; $j < $end; $j++) {
                 $verse[] = $timecodes[$j]->GetTimecode($referenceWords);
             }
-            if (count($verse) === 0) {
-                continue;
-            }
+            //if (count($verse) < 4) continue;
+            //$output[] = $verse;
 
-            $output[] = $verse;
+            while (count($verse) >= 4) {
+                $output[] = array_splice($verse, 0, 4);
+            }
         }
 
         return $output;
