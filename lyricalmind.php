@@ -131,9 +131,11 @@ class LyricalMind
         // Scrapper
         $this->Print("[$spotifyID] Scrap lyrics");
         $file_lyrics = "{$this->tempVocalsPath}/{$spotifyID}_lyrics.txt";
+        $artist = $this->initialArtists === '' ? $output->artists[0] : $this->initialArtists;
+        $title = $this->initialTitle === '' ? $output->title : $this->initialTitle;
         $lyricsRaw = scrapper(
-            $this->initialArtists,
-            $this->initialTitle,
+            $artist,
+            $title,
             $output->lyrics_source,
             fn($message) => $this->Print("[$spotifyID] Scrap lyrics: $message"),
             $file_lyrics

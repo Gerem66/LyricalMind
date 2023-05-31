@@ -2,26 +2,14 @@
 
 
 class VerseTimecode {
-    /** @var 'ok'|'error' $status Verse status */
-    public $status;
-
     /** @var float $start Time in seconds */
     public $start;
 
     /** @var float $end Time in seconds */
     public $end;
 
-    /**
-     * VerseTimecode constructor
-     * @param 'ok'|'error' $status Verse status
-     * @param int $start Time in seconds
-     * @param int $end Time in seconds
-     */
-    public function __construct($status, $start, $end) {
-        $this->status = $status;
-        $this->start = $start;
-        $this->end = $end;
-    }
+    /** @var string $line Verse line */
+    public $line;
 }
 
 class LyricalMindOutput {
@@ -106,7 +94,7 @@ class LyricalMindOutput {
 
     /**
      * Timecodes of the song (array of timecodes)
-     * @var VerseTimecode[]|false
+     * @var VerseTimecode[][]|false
      */
     public $timecodes = false;
 

@@ -36,6 +36,19 @@ class Timecode {
         $this->start = $start;
         $this->end = $end;
     }
+
+    /**
+     * Get timecode as object (for JSON)
+     * @param STTWord[] $refWords List of words from WordReference (WhisperX result)
+     * @return string
+     */
+    public function GetTimecode($refWords) {
+        return array(
+            'line' => $this->line,
+            'start' => $refWords[$this->start]->start,
+            'end' => $refWords[$this->end]->end
+        );
+    }
 }
 
 class Lyrics {
@@ -99,11 +112,11 @@ class Lyrics {
     /**
      * @param STTWord[] $referenceWords Reference words from WhisperX
      * @param string|false $error Error message if any
-     * @return VerseTimecode[]|false Synchronized lyrics line by line
+     * @return VerseTimecode[][]|false Synchronized lyrics line by line
      */
     public function SyncStructure($referenceWords, &$error = false) {
         $DEBUG = false;
-        $DEBUG_RESULT = 'live'; // all, times, live or none
+        $DEBUG_RESULT = 'none'; // all, times, live or none
         if ($DEBUG) {
             echo('Total ref words: ' . count($referenceWords) . "\n");
         }
@@ -240,7 +253,7 @@ class Lyrics {
             return false;
         }
 
-        // 3. Corrections - Adjust start and end
+        // 3. Last check - if there are non definitive timecodes, deduce them from median
         $alive = true;
         while ($alive) {
             // 3.1. Find median
@@ -270,16 +283,28 @@ class Lyrics {
                 if ($prevTimecode->definitive && $nextTimecode->definitive) {
                     $timecode->start = ($prevTimecode->start + $nextTimecode->start) / 2;
                     $timecode->end = $timecode->start + count(explode(' ', $timecode->line));
+
+                    if ($timecode->start < 0) $timecode->start = 0;
+                    if ($timecode->end < 0) $timecode->end = 0;
+
                     $timecode->definitive = true;
                     $modification++;
                 } else if ($prevTimecode->definitive) {
                     $timecode->start = $prevTimecode->start + $median;
                     $timecode->end = $timecode->start + count(explode(' ', $timecode->line));
+
+                    if ($timecode->start < 0) $timecode->start = 0;
+                    if ($timecode->end < 0) $timecode->end = 0;
+
                     $timecode->definitive = true;
                     $modification++;
                 } else if ($nextTimecode->definitive) {
                     $timecode->end = $nextTimecode->start - $median;
                     $timecode->start = $timecode->end - count(explode(' ', $timecode->line));
+
+                    if ($timecode->end < 0) $timecode->end = 0;
+                    if ($timecode->start < 0) $timecode->start = 0;
+
                     $timecode->definitive = true;
                     $modification++;
                 }
@@ -373,51 +398,38 @@ class Lyrics {
             return $acc;
         }, [0]);
 
-        for ($i = 0; $i < $this->GetVersesCount(); $i++) {
-            $isLastVerse = $i === $this->GetVersesCount() - 1;
-            $currIndex = $firstLinesIndexes[$i];
-            if ($currIndex < 0 || $currIndex >= count($timecodes)) {
-                $vt = new VerseTimecode('error', 0.0, 0.0);
-                array_push($versesTimecodes, $vt);
-                continue;
-            }
-            $currTimecode = $timecodes[$currIndex];
-            $nextTimecode = false;
+        $output = array();
+        for ($i = 0; $i < $this->GetVersesCount() - 2; $i++) {
+            $start = $firstLinesIndexes[$i];
+            $end = $firstLinesIndexes[$i + 1] - 1;
 
-            if ($isLastVerse) {
-                $nextTimecode = $timecodes[count($timecodes) - 1];
-            } else {
-                $nextIndex = $firstLinesIndexes[$i + 1] - 1;
-                if ($nextIndex > 0 && $nextIndex < count($timecodes)) {
-                    $nextTimecode = $timecodes[$nextIndex];
+            // Check if line of verse failed
+            $error = false;
+            for ($j = $start; $j < $end; $j++) {
+                if ($timecodes[$j]->start < 0 || $timecodes[$j]->end < 0 ||
+                    ($timecodes[$j]->start === 0 && $timecodes[$j]->end === 0) ||
+                    $timecodes[$j]->start >= count($referenceWords) || $timecodes[$j]->end >= count($referenceWords))
+                {
+                    $error = true;
+                    break;
                 }
             }
-
-            // Lyrics index errors
-            if ($currTimecode->start < 0 || $currTimecode->end >= $refWordsCount || $nextTimecode === false ||
-                $nextTimecode->start < 0 || $nextTimecode->end >= $refWordsCount) {
-                $vt = new VerseTimecode('error', 0.0, 0.0);
-                array_push($versesTimecodes, $vt);
+            if ($error) {
                 continue;
             }
 
-            $status = 'ok';
-            $startTime = $referenceWords[$currTimecode->start]->start;
-            $endTime = $referenceWords[$nextTimecode->end]->end;
-
-            // Times errors
-            if ($endTime == 0 || $endTime < $startTime ||
-                $endTime - $startTime < 1000 * count($verses[$i])) {
-                $status = 'error';
+            $verse = array();
+            for ($j = $start; $j < $end; $j++) {
+                $verse[] = $timecodes[$j]->GetTimecode($referenceWords);
+            }
+            if (count($verse) === 0) {
+                continue;
             }
 
-            $startTime = round($startTime / 1000, 2);
-            $endTime = round($endTime / 1000, 2);
-            $vt = new VerseTimecode($status, $startTime, $endTime);
-            array_push($versesTimecodes, $vt);
+            $output[] = $verse;
         }
 
-        return $versesTimecodes;
+        return $output;
     }
 }
 
