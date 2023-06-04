@@ -328,7 +328,6 @@ class Lyrics {
 
             if ($duration < .5 || $duration > 15) {
                 $timecode->definitive = false;
-                echo("Timecode {$i} disabled because duration is {$duration}\n");
             }
         }
 
@@ -420,13 +419,11 @@ class Lyrics {
             // Ignore firsts lines if they are not defined
             while ($start < $end && $timecodes[$start]->definitive === false) {
                 $start++;
-                echo("Ignore start\n");
             }
 
             // Ignore lasts lines if they are not defined
             while ($end > $start && $timecodes[$end]->definitive === false) {
                 $end--;
-                echo("Ignore end\n");
             }
 
             // Ignore all verses if one of them is not defined

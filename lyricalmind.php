@@ -63,8 +63,8 @@ class LyricalMind
             }
         }
         if (!file_exists($this->tempVocalsPath)) {
-            $status = bash('mkdir ' . $this->tempVocalsPath);
-            if ($status !== 0) {
+            $created = mkdir($this->tempVocalsPath, 0777, true);
+            if ($created === false) {
                 throw new Exception('Cannot create temp vocals folder');
             }
         }
