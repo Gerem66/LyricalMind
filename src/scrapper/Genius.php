@@ -22,7 +22,7 @@ function GetLyricsFromGenius($artists, $title, &$source = null) {
     $url = "https://genius.com/$artists-$title-lyrics";
     $source = $url;
 
-    $lyrics = RequestWithProxy($url, required: 'data-lyrics-container');
+    $lyrics = RequestWithProxy($url, retry: 20, required: 'data-lyrics-container');
     if ($lyrics === false) return false;
 
     // Get lyrics from html

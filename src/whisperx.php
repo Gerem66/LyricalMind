@@ -39,6 +39,14 @@ class STTWord {
         $this->score = $word['score'];
     }
 
+    public static function IsCorrectWord($word) {
+        $keys = [ 'word', 'start', 'end', 'score'];
+        foreach ($keys as $key)
+            if (!isset($word[$key]))
+                return false;
+        return true;
+    }
+
     /**
      * Search for a word in the lyrics
      * @param STTWord[] $reference_words
@@ -111,16 +119,17 @@ class STTWord {
 /**
  * @param string $filepath Path to audio file
  * @param string|null $outputfile Path to output file
+ * @param 'en'|'fr'|'de'|'es'|'it'|'ja'|'zh'|'nl'|'uk'|'pt' $language Language of the audio file
  * @return STTWord[]|false Array of words or false on failure
  */
-function SpeechToText($filepath, $outputfile = null) {
+function SpeechToText($filepath, $outputfile = null, $language = 'en') {
     // Check if lyrics are already saved
     if ($outputfile !== null && file_exists($outputfile)) {
         return unserialize(file_get_contents($outputfile));
     }
 
     $name = pathinfo($filepath, PATHINFO_FILENAME);
-    $command = "whisperx --compute_type float32 --highlight_words True --output_format=json --output_dir /tmp/$name $filepath";
+    $command = "whisperx --compute_type float32 --highlight_words True --language $language --output_format=json --output_dir /tmp/$name $filepath";
 
     # Run command
     bash($command, hide: true);
@@ -135,8 +144,11 @@ function SpeechToText($filepath, $outputfile = null) {
     if ($data === null || !isset($data['word_segments'])) return false;
 
     # Convert to STTWord
+    $checkFunc = fn($mixedWord) => STTWord::IsCorrectWord($mixedWord);
     $convertFunc = fn($mixedWord) => new STTWord($mixedWord);
-    $words = array_map($convertFunc, $data['word_segments']);
+    $words = array_filter($data['word_segments'], $checkFunc);
+    $words = array_values($words);
+    $words = array_map($convertFunc, $words);
 
     # Save all words data in a file
     if ($outputfile !== null) {

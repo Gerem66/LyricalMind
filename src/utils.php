@@ -112,7 +112,10 @@ function GetClientIP() {
  * @return int
  */
 function minmax($value, $min, $max) {
-    return min(max($value, $min), $max);
+    if ($min > $max)    throw new Exception("minmax: min ($min) > max ($max)");
+    if ($value < $min)  return $min;
+    if ($value > $max)  return $max;
+    return $value;
 }
 
 function Median($array) {

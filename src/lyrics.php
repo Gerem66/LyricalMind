@@ -40,13 +40,15 @@ class Timecode {
     /**
      * Get timecode as object (for JSON)
      * @param STTWord[] $refWords List of words from WordReference (WhisperX result)
-     * @return string
+     * @return object|null Timecode object or null if one of the reference word is null
      */
     public function GetTimecode($refWords) {
+        $firstRefWord = $refWords[$this->start];
+        $lastRefWord = $refWords[$this->end];
         return array(
             'line' => $this->line,
-            'start' => $refWords[$this->start]->start,
-            'end' => $refWords[$this->end]->end
+            'start' => $firstRefWord->start / 1000,
+            'end' => $lastRefWord->end / 1000
         );
     }
 }
@@ -159,7 +161,7 @@ class Lyrics {
         for ($l = 0; $l < $this->linesCount; $l++) {
 
             // TODO - Remove cause it's useless
-            if ($l < 0 || $l >= $this->linesCount || $timecodes[$l] === null) {
+            if ($l < 0 || $l >= $this->linesCount) {
                 $class = 'LinesCount: ' . json_encode($this->linesCount) . "\t";
                 $class .= 'Verses: ' . json_encode($this->verses) . "\t";
                 $class .= 'Timecodes: ' . json_encode($timecodes);
@@ -308,9 +310,25 @@ class Lyrics {
                     $timecode->definitive = true;
                     $modification++;
                 }
+                $timecode->start = minmax($timecode->start, 0, $refWordsCount - 1);
+                $timecode->end = minmax($timecode->end, 0, $refWordsCount - 1);
             }
             if ($modification === 0) {
                 $alive = false;
+            }
+        }
+
+        // 4. Disable timecodes that are too close to each other
+        for ($i = 1; $i < count($timecodes); $i++) {
+            $timecode = $timecodes[$i];
+
+            $startTime = $referenceWords[$timecode->start]->start;
+            $endTime = $referenceWords[$timecode->end]->end;
+            $duration = ($endTime - $startTime) / 1000;
+
+            if ($duration < .5 || $duration > 15) {
+                $timecode->definitive = false;
+                echo("Timecode {$i} disabled because duration is {$duration}\n");
             }
         }
 
@@ -387,10 +405,6 @@ class Lyrics {
             }
         }
 
-        // Get verses timecodes
-        /** @var array<VerseTimecode> */
-        $versesTimecodes = array();
-
         // Get first line of each verse
         $verses = $this->GetVerses();
         $firstLinesIndexes = array_reduce($verses, function($acc, $verse) {
@@ -403,27 +417,37 @@ class Lyrics {
             $start = $firstLinesIndexes[$i];
             $end = $firstLinesIndexes[$i + 1] - 1;
 
+            // Ignore firsts lines if they are not defined
+            while ($start < $end && $timecodes[$start]->definitive === false) {
+                $start++;
+                echo("Ignore start\n");
+            }
+
+            // Ignore lasts lines if they are not defined
+            while ($end > $start && $timecodes[$end]->definitive === false) {
+                $end--;
+                echo("Ignore end\n");
+            }
+
             // Ignore all verses if one of them is not defined
-            //$error = false;
+            //$verseError = false;
             //for ($j = $start; $j < $end; $j++) {
-            //    if ($timecodes[$j]->start < 0 || $timecodes[$j]->end < 0 ||
-            //        ($timecodes[$j]->start === 0 && $timecodes[$j]->end === 0) ||
-            //        $timecodes[$j]->start >= count($referenceWords) || $timecodes[$j]->end >= count($referenceWords))
-            //    {
-            //        $error = true;
+            //    if (!$timecodes[$j]->definitive) {
+            //        $verseError = true;
             //        break;
             //    }
             //}
-            //if ($error) {
+            //if ($verseError) {
             //    continue;
             //}
 
             $verse = array();
             for ($j = $start; $j < $end; $j++) {
+                if ($timecodes[$j] === null) {
+                    continue;
+                }
                 $verse[] = $timecodes[$j]->GetTimecode($referenceWords);
             }
-            //if (count($verse) < 4) continue;
-            //$output[] = $verse;
 
             while (count($verse) >= 4) {
                 $output[] = array_splice($verse, 0, 4);
