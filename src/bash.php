@@ -7,16 +7,19 @@
  * @param boolean $hide Hide output of command (but don't return status)
  * @return integer Status of command
  */
-function bash($command, &$output = null, $user = false, $hide = false) {
+function bash($command, &$output = null, $user = false, $hide = false, $escapeShellCmd = true) {
     if ($user !== false)
         $command = "sudo -u $user $command";
 
-    $command = escapeshellcmd($command);
+    if ($escapeShellCmd)
+        $command = escapeshellcmd($command);
+
     if ($hide) {
         $command .= ' > /dev/null 2>&1'; // 2> /dev/null
         $output = shell_exec($command);
         return 0;
     }
+
     exec($command, $output, $status);
     return $status;
 }
