@@ -111,13 +111,19 @@ class LyricalMindOutput {
     public $total_time = 0.0;
 
     /**
-     * Source of the lyrics
+     * Source of the lyrics (path of the lyrics file)
      * @var string|false
      */
     public $lyrics_source = false;
 
     /**
-     * Source of the spleeted voice (audio file)
+     * Source of the original song (audio file)
+     * @var string|false
+     */
+    public $original_source = false;
+
+    /**
+     * Source of the spleeted voice (audio file, voice only)
      * @var string|false
      */
     public $voice_source = false;

@@ -37,11 +37,10 @@ class LyricalMind
     /**
      * LyricalMind constructor.
      * @param SpotifyAPI|false $spotifyAPI SpotifyAPI class (false to disable)
-     * @param string|false $tempVocalsPath Path to temp vocals folder (false to default to /tmp)
      * @param bool $showConsoleOutput Show console output
      * @throws Exception If settings file not found
      */
-    public function __construct($spotifyAPI = false, $tempVocalsPath = false, $showConsoleOutput = false) {
+    public function __construct($spotifyAPI = false, $showConsoleOutput = false) {
         if (!file_exists($this->configFile)) {
             throw new Exception('Settings file not found');
         }
@@ -56,12 +55,15 @@ class LyricalMind
         }
 
         // Create temp vocals folder
-        if ($tempVocalsPath !== false) {
+        // Get dir_tmp from config.json
+        $tempVocalsPath = json_decode(file_get_contents($this->configFile), true)['dir_tmp'];
+        if (isset($tempVocalsPath)) {
             $this->tempVocalsPath = $tempVocalsPath;
             if (str_ends_with($this->tempVocalsPath, '/')) {
                 $this->tempVocalsPath = substr($this->tempVocalsPath, 0, strlen($this->tempVocalsPath) - 1);
             }
         }
+
         if (!file_exists($this->tempVocalsPath)) {
             $created = mkdir($this->tempVocalsPath, 0777, true);
             if ($created === false) {
@@ -81,7 +83,10 @@ class LyricalMind
         ];
         foreach ($filenames as $filename) {
             if (file_exists($filename)) {
-                bash("rm -rf $filename");
+                $removed = unlink($filename);
+                if ($removed === false) {
+                    $this->Print("[$id] Failed to remove file: $filename");
+                }
             }
         }
     }
@@ -219,6 +224,8 @@ class LyricalMind
         if ($spleeted === false) {
             return $output->SetStatus('error', 4, 'Spleeter: Vocals not separated');
         }
+
+        $output->original_source = $filenameDownloaded;
         $output->voice_source = $filenameSpleeted;
 
         // Get timecodes from audio reference
