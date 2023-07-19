@@ -323,7 +323,7 @@ class Lyrics {
             $timecode = $timecodes[$i];
 
             $startTime = $referenceWords[$timecode->start]->start;
-            $endTime = $referenceWords[$timecode->end]->end;
+            $endTime = $referenceWords[$timecode->end]->end; // TODO - This line can crash
             $duration = ($endTime - $startTime) / 1000;
 
             if ($duration < .5 || $duration > 15) {
