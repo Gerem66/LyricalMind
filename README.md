@@ -1,5 +1,5 @@
-# LyricalMind
-Version: 0.1.0
+# LyricalMind - v0.1.0
+Retrieves information and synchronized lyrics for a sound by name.
 
 ## Usage
 ```php
