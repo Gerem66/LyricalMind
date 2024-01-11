@@ -16,11 +16,11 @@ $output = $lyricsMind->GetLyricsByName($artist, $title, $syncLyrics);
 ```
 
 ## How it works
-Get lyrics
+### Get lyrics
 1. Get Spotify song ID if needed, bpm, key/mode and duration
 2. Get lyrics from scraping (AZ, Genius, P2C)
 
-Synchronize lyrics (optional, need SpotifyAPI and WhisperX)
+### Synchronize lyrics (optional, need SpotifyAPI and WhisperX)
 3. Download song from Spotify (spotdl)
 4. Separate vocals from song (unmix)
 5. Speech to text (WhisperX)
